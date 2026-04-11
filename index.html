@@ -145,11 +145,19 @@
         bottom: 16px;
         left: 16px;
         font-size: 11px;
-        color: rgba(255,255,255,0.45);
-        line-height: 1.7;
+        color: rgba(255,255,255,0.82);
+        line-height: 1.75;
         pointer-events: none;
         z-index: 10;
+        background: rgba(0, 0, 0, 0.52);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 8px;
+        padding: 8px 12px;
+        transition: opacity 0.2s;
       }
+      #info-bar.hidden { opacity: 0; pointer-events: none; }
 
       /* ── Help overlay (toggle with H) ─────────────────────────── */
       #help-overlay {
@@ -286,10 +294,12 @@
       <button id="btn-reset">↺ Reset View</button>
     </div>
 
-    <!-- Bottom-left: live coordinates and zoom level -->
-    <div id="info-bar">
+    <!-- Bottom-left: status info (toggle with I) -->
+    <div id="info-bar" class="hidden">
       <div id="info-coords">Re: 0.000000 &nbsp; Im: 0.000000</div>
       <div id="info-zoom">Zoom: 1.00×</div>
+      <div id="info-rotation">Rotation: 0.0°</div>
+      <div id="info-fps">FPS: —</div>
       <div id="info-fractal">Mandelbrot</div>
     </div>
 
@@ -302,6 +312,7 @@
       <div class="help-row" data-action="pan-keys">    <span class="tutor-dot"></span><span class="help-key">↑↓←→</span> Pan</div>
       <div class="help-row" data-action="zoom-keys">   <span class="tutor-dot"></span><span class="help-key">+</span><span class="help-key">−</span> Zoom</div>
       <div class="help-row" data-action="reset">       <span class="tutor-dot"></span><span class="help-key">R</span> Reset view</div>
+      <div class="help-row" data-action="toggle-info"> <span class="tutor-dot"></span><span class="help-key">I</span> Toggle info bar</div>
       <div class="help-row" data-action="toggle-ui">   <span class="tutor-dot"></span><span class="help-key">U</span> Toggle UI</div>
       <div class="help-row" data-action="toggle-help"> <span class="tutor-dot"></span><span class="help-key">H</span> Toggle help</div>
     </div>

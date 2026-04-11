@@ -23,7 +23,7 @@ import { zoomAt, panBy, pixelToComplex, pixelDeltaToComplex } from './Camera.js'
 
 type UpdateCallback = () => void;
 type FractalSwitchCallback = (index: number) => void;
-type UIToggleCallback = (which: 'ui' | 'help') => void;
+type UIToggleCallback = (which: 'ui' | 'help' | 'info') => void;
 type ResetCallback = () => void;
 // Fired whenever the user performs a trackable action (tutor system).
 // IDs match the data-action attributes in the help overlay HTML.
@@ -333,6 +333,10 @@ export class InputHandler {
       case 'u':
       case 'U':
         this.onUIToggle('ui');
+        break;
+      case 'i':
+      case 'I':
+        this.onUIToggle('info');
         break;
       case 'h':
       case 'H':

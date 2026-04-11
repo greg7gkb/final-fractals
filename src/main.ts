@@ -30,6 +30,27 @@ const uniforms: FractalUniforms = {
 
 let dirty = true;  // render at least once on startup
 
+// ── FPS tracking ───────────────────────────────────────────────────────────
+// We only render when dirty, so we track time between actual render calls
+// rather than rAF ticks. A short rolling window gives a responsive reading.
+const FPS_WINDOW = 30;              // smooth over up to 30 render timestamps
+const fpsTimestamps: number[] = []; // circular buffer of recent render times
+const FPS_IDLE_MS  = 2000;         // show "—" after 2 s with no new renders
+
+function recordRender(): void {
+  const now = performance.now();
+  fpsTimestamps.push(now);
+  if (fpsTimestamps.length > FPS_WINDOW) fpsTimestamps.shift();
+}
+
+function currentFps(): number | null {
+  if (fpsTimestamps.length < 2) return null;
+  const newest = fpsTimestamps[fpsTimestamps.length - 1];
+  if (performance.now() - newest > FPS_IDLE_MS) return null; // gone idle
+  const span = newest - fpsTimestamps[0];
+  return Math.round((fpsTimestamps.length - 1) / (span / 1000));
+}
+
 // ── Canvas setup ───────────────────────────────────────────────────────────
 
 const canvas = document.getElementById('fractal-canvas') as HTMLCanvasElement;
@@ -94,6 +115,10 @@ const inputHandler = new InputHandler(
       controls.markTutorAction('toggle-ui');
       controls.toggleUI();
     }
+    if (which === 'info') {
+      controls.markTutorAction('toggle-info');
+      controls.toggleInfo();
+    }
     if (which === 'help') controls.toggleHelp(); // handles tutor internally
   },
   // onReset
@@ -114,7 +139,8 @@ function frame(): void {
 
   if (dirty) {
     renderer.render(camera, uniforms);
-    controls.updateInfoBar(camera);
+    recordRender();
+    controls.updateInfoBar(camera, currentFps());
     dirty = false;
   }
 

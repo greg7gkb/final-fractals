@@ -13,7 +13,7 @@ const FRACTAL_NAMES = ['Mandelbrot', 'Julia Set', 'Burning Ship', 'Newton', 'Tri
 // All action IDs that have a tutor dot in the help overlay (order matters for UX, not logic)
 const TUTOR_ACTIONS = [
   'pan-drag', 'zoom-scroll', 'zoom-click', 'rotate',
-  'pan-keys', 'zoom-keys', 'reset', 'toggle-ui', 'toggle-help',
+  'pan-keys', 'zoom-keys', 'reset', 'toggle-ui', 'toggle-info', 'toggle-help',
 ];
 
 export class Controls {
@@ -32,8 +32,11 @@ export class Controls {
   private rangeIterations: HTMLInputElement;
   private labelIterations: HTMLElement;
   private btnReset: HTMLButtonElement;
+  private infoBar: HTMLElement;
   private infoCoords: HTMLElement;
   private infoZoom: HTMLElement;
+  private infoRotation: HTMLElement;
+  private infoFps: HTMLElement;
   private infoFractal: HTMLElement;
   private controlsPanel: HTMLElement;
   private helpOverlay: HTMLElement;
@@ -52,8 +55,11 @@ export class Controls {
     this.rangeIterations  = document.getElementById('range-iterations')  as HTMLInputElement;
     this.labelIterations  = document.getElementById('label-iterations')  as HTMLElement;
     this.btnReset         = document.getElementById('btn-reset')         as HTMLButtonElement;
+    this.infoBar          = document.getElementById('info-bar')          as HTMLElement;
     this.infoCoords       = document.getElementById('info-coords')       as HTMLElement;
     this.infoZoom         = document.getElementById('info-zoom')         as HTMLElement;
+    this.infoRotation     = document.getElementById('info-rotation')     as HTMLElement;
+    this.infoFps          = document.getElementById('info-fps')          as HTMLElement;
     this.infoFractal      = document.getElementById('info-fractal')      as HTMLElement;
     this.controlsPanel    = document.getElementById('controls')          as HTMLElement;
     this.helpOverlay      = document.getElementById('help-overlay')      as HTMLElement;
@@ -70,17 +76,29 @@ export class Controls {
     this.syncInfoFractal();
   }
 
-  /** Update the bottom-left info bar from current camera state */
-  updateInfoBar(camera: Camera): void {
+  /** Update the bottom-left info bar from current camera + perf state */
+  updateInfoBar(camera: Camera, fps: number | null): void {
     this.infoCoords.textContent =
       `Re: ${camera.centerRe.toFixed(6)}   Im: ${camera.centerIm.toFixed(6)}`;
-    // Zoom level expressed as a multiplier relative to initial zoom=3
+
+    // Zoom expressed as a multiplier relative to initial zoom=3
     const zoomX = (3 / camera.zoom).toFixed(2);
     this.infoZoom.textContent = `Zoom: ${zoomX}×`;
+
+    // Rotation in degrees, normalised to [0°, 360°)
+    const deg = ((camera.rotation * 180 / Math.PI) % 360 + 360) % 360;
+    this.infoRotation.textContent = `Rotation: ${deg.toFixed(1)}°`;
+
+    // FPS — null means idle (no recent renders)
+    this.infoFps.textContent = `FPS: ${fps !== null ? fps : 0}`;
   }
 
   toggleUI(): void {
     this.controlsPanel.classList.toggle('hidden');
+  }
+
+  toggleInfo(): void {
+    this.infoBar.classList.toggle('hidden');
   }
 
   toggleHelp(): void {
