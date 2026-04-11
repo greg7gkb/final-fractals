@@ -137,6 +137,7 @@ uniform int   u_maxIterations;
 uniform int   u_fractalType;
 uniform vec2  u_juliaC;      // Julia constant (user-typed, float32 precision is enough)
 // 0=UltraSmooth  1=Fire  2=Electric  3=Grayscale  4=Rainbow
+// 5=SharkBlue  6=GTSilver  7=Carmine
 uniform int   u_colorScheme;
 
 out vec4 fragColor;
@@ -420,12 +421,53 @@ vec3 colorRainbow(float t) {
   if (t >= 1.0) return vec3(0.0);
   return hsv2rgb(fract(t * 5.0 + 0.6), 0.9, 1.0 - t*0.3);
 }
+
+// ── Porsche Shark Blue Metallic ───────────────────────────────────────────
+// Deep navy → rich metallic blue → icy electric highlight.
+// ring: gentle brightness oscillation creates banding without changing hue.
+// pow curve biases luminance so boundary regions (high t) bloom brightest.
+vec3 colorSharkBlue(float t) {
+  if (t >= 1.0) return vec3(0.0);
+  float ring = 0.5 + 0.5 * sin(t * 47.1);
+  float v    = clamp(pow(t, 0.55) * (0.82 + 0.18 * ring), 0.0, 1.0);
+  // 3-stop: near-black navy → rich Shark Blue → icy white-blue
+  if (v < 0.55) return mix(vec3(0.00, 0.01, 0.06), vec3(0.06, 0.25, 0.62), v / 0.55);
+  return         mix(vec3(0.06, 0.25, 0.62), vec3(0.72, 0.89, 1.00), (v - 0.55) / 0.45);
+}
+
+// ── Porsche GT Silver Metallic ────────────────────────────────────────────
+// Cold black → steel grey → bright specular silver-white.
+// Slightly cool (blue-grey tint) to evoke brushed aluminium.
+vec3 colorGTSilver(float t) {
+  if (t >= 1.0) return vec3(0.0);
+  float ring = 0.5 + 0.5 * sin(t * 47.1);
+  float v    = clamp(pow(t, 0.55) * (0.82 + 0.18 * ring), 0.0, 1.0);
+  // 3-stop: near-black → steel grey → bright specular white
+  if (v < 0.50) return mix(vec3(0.01, 0.01, 0.02), vec3(0.30, 0.33, 0.36), v / 0.50);
+  return         mix(vec3(0.30, 0.33, 0.36), vec3(0.92, 0.93, 0.95), (v - 0.50) / 0.50);
+}
+
+// ── Porsche Guards Red (Carmine) ──────────────────────────────────────────
+// Near-black → deep signal red → orange-white boundary flare.
+// The warm edge stops it feeling flat — classic Porsche racing look.
+vec3 colorCarmine(float t) {
+  if (t >= 1.0) return vec3(0.0);
+  float ring = 0.5 + 0.5 * sin(t * 47.1);
+  float v    = clamp(pow(t, 0.55) * (0.82 + 0.18 * ring), 0.0, 1.0);
+  // 3-stop: near-black red → Guards Red → orange-white flare
+  if (v < 0.60) return mix(vec3(0.04, 0.00, 0.00), vec3(0.72, 0.04, 0.04), v / 0.60);
+  return         mix(vec3(0.72, 0.04, 0.04), vec3(1.00, 0.82, 0.62), (v - 0.60) / 0.40);
+}
+
 vec3 applyColorScheme(float t) {
   if      (u_colorScheme == 0) return colorUltraSmooth(t);
   else if (u_colorScheme == 1) return colorFire(t);
   else if (u_colorScheme == 2) return colorElectric(t);
   else if (u_colorScheme == 3) return colorGrayscale(t);
-  else                         return colorRainbow(t);
+  else if (u_colorScheme == 4) return colorRainbow(t);
+  else if (u_colorScheme == 5) return colorSharkBlue(t);
+  else if (u_colorScheme == 6) return colorGTSilver(t);
+  else                         return colorCarmine(t);
 }
 vec3 colorNewton(float v) {
   if (v < 0.0) return vec3(0.02);
