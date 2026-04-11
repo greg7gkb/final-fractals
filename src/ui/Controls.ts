@@ -141,15 +141,23 @@ export class Controls {
       // Listening to animationend directly is exact — no hardcoded timeout needed.
       const startFade = () => {
         this.helpOverlay.classList.add('tutor-fading');
-        this.helpOverlay.addEventListener('animationend', () => {
+        // animationend bubbles — dots finishing after startFade runs will also
+        // fire this listener. Guard by animationName so we only act on the
+        // overlay's own animation, not on events bubbled up from child dots.
+        // { once: true } is intentionally omitted: a bubbled dot event would
+        // consume it before the real overlay event arrives.
+        const onOverlayDone = (e: Event) => {
+          if ((e as AnimationEvent).animationName !== 'tutor-overlay-done') return;
+          this.helpOverlay.removeEventListener('animationend', onOverlayDone);
           this.helpOverlay.classList.remove('tutor-fading');
           this.helpOverlay.classList.add('hidden');
-        }, { once: true });
+        };
+        this.helpOverlay.addEventListener('animationend', onOverlayDone);
       };
       if (dot) {
         dot.addEventListener('animationend', (e) => {
-          e.stopPropagation(); // prevent the dot's animationend bubbling up to
-          startFade();         // the overlay and firing its own listener early
+          e.stopPropagation();
+          startFade();
         }, { once: true });
       } else {
         startFade(); // no dot to wait for — fade immediately
