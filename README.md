@@ -110,7 +110,7 @@ This section explains the code-to-pixel pipeline for those who want to understan
 ```
 JavaScript (CPU)                 GPU
 ────────────────                 ─────────────────────────────────────────
-main.ts                          Vertex shader (×3 vertices)
+main.ts (frame loop)             Vertex shader (×3 vertices)
   │  sets uniforms               │  emits: one giant triangle covering the screen
   │  calls drawArrays()    ───►  │
   │                              ▼
@@ -125,20 +125,22 @@ main.ts                          Vertex shader (×3 vertices)
   │                              Framebuffer  →  screen
 ```
 
+The CPU side entry point is [`frame()` in `src/main.ts`](src/main.ts#L137), which uses a [dirty flag](src/main.ts#L31) so the GPU is only invoked when the view actually changes. [`gl.drawArrays()`](src/renderer/WebGLRenderer.ts#L142) in `WebGLRenderer` triggers the pipeline.
+
 ### Key files
 
 | File | Purpose |
 |------|---------|
-| `src/renderer/shaders.ts` | All GLSL source code, extensively commented. Start here to understand the math. |
-| `src/renderer/WebGLRenderer.ts` | Compiles shaders, links the GPU program, uploads uniforms, issues the draw call. |
-| `src/navigation/Camera.ts` | View state: centre, zoom, rotation. Also the pixel→complex coordinate transform that mirrors the shader logic. |
-| `src/navigation/InputHandler.ts` | Translates mouse/touch/keyboard events into camera mutations. |
-| `src/ui/Controls.ts` | Wires HTML controls ↔ shader uniforms. |
-| `src/main.ts` | Entry point; `requestAnimationFrame` render loop with dirty-flag optimisation. |
+| [`src/renderer/shaders.ts`](src/renderer/shaders.ts) | All GLSL source code, extensively commented. Start here to understand the math. |
+| [`src/renderer/WebGLRenderer.ts`](src/renderer/WebGLRenderer.ts) | Compiles shaders, links the GPU program, uploads uniforms, issues the draw call. |
+| [`src/navigation/Camera.ts`](src/navigation/Camera.ts) | View state: centre, zoom, rotation. Also the pixel→complex coordinate transform that mirrors the shader logic. |
+| [`src/navigation/InputHandler.ts`](src/navigation/InputHandler.ts) | Translates mouse/touch/keyboard events into camera mutations. |
+| [`src/ui/Controls.ts`](src/ui/Controls.ts) | Wires HTML controls ↔ shader uniforms. |
+| [`src/main.ts`](src/main.ts) | Entry point; `requestAnimationFrame` render loop with dirty-flag optimisation. |
 
 ### Coordinate transform
 
-Every pixel needs to know which complex number to test. The transform (in both the shader and `Camera.ts`) is:
+Every pixel needs to know which complex number to test. The transform is implemented twice — once in [`pixelToComplexDD()` in `shaders.ts`](src/renderer/shaders.ts#L231) (GLSL, runs on the GPU) and once in [`pixelToComplex()` in `Camera.ts`](src/navigation/Camera.ts#L115) (TypeScript, used for mouse hit-testing) — and they must stay in sync. The sequence is:
 
 ```
 pixel (x, y)
@@ -151,7 +153,7 @@ pixel (x, y)
 
 ### Escape-time colouring
 
-For Mandelbrot/Julia/BurningShip/Tricorn, we iterate until `|z|² > 4` (the escape condition), then compute a smooth colour value:
+For Mandelbrot/Julia/BurningShip/Tricorn, we iterate until `|z|² > 4` (the escape condition), then compute a smooth colour value via [`smoothCount()` in `shaders.ts`](src/renderer/shaders.ts#L250):
 
 ```
 smooth_t = (i − log₂(log₂(|z|²) / 2)) / maxIterations
@@ -161,7 +163,7 @@ The nested log removes the discrete "banding" you'd get from raw integer counts,
 
 ### Newton fractal
 
-Newton's method for `f(z) = z³ − 1` converges to one of three roots. We colour by *which root* (red / green / blue) and modulate brightness by *convergence speed*. This produces the characteristic tricolour fractal boundary regions.
+[Newton's method](src/renderer/shaders.ts#L358) for `f(z) = z³ − 1` converges to one of three roots. We colour by *which root* (red / green / blue) and modulate brightness by *convergence speed*. This produces the characteristic tricolour fractal boundary regions.
 
 ---
 
