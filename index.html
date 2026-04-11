@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Final Fractals</title>
+    <style>
+      /* ── Reset & base ─────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        background: #000;
+        overflow: hidden;          /* canvas fills the full viewport */
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        color: #e8e8e8;
+        user-select: none;
+      }
+
+      /* ── Full-window canvas ───────────────────────────────────── */
+      #fractal-canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        cursor: grab;
+      }
+      #fractal-canvas.dragging { cursor: grabbing; }
+
+      /* ── Controls panel ───────────────────────────────────────── */
+      #controls {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        width: 260px;
+        background: rgba(10, 10, 16, 0.88);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        z-index: 10;
+        transition: opacity 0.2s;
+      }
+      #controls.hidden { opacity: 0; pointer-events: none; }
+
+      .panel-title {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .panel-title span { font-size: 18px; }
+
+      .control-group { display: flex; flex-direction: column; gap: 6px; }
+
+      label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #888;
+      }
+
+      select, input[type="range"], input[type="number"] {
+        width: 100%;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 6px;
+        color: #e8e8e8;
+        padding: 6px 8px;
+        font-size: 13px;
+        outline: none;
+        appearance: none;
+        -webkit-appearance: none;
+      }
+      select:focus, input:focus {
+        border-color: rgba(120, 160, 255, 0.6);
+      }
+      select option { background: #111; }
+
+      input[type="range"] {
+        padding: 0;
+        height: 4px;
+        cursor: pointer;
+        accent-color: #7891ff;
+      }
+      .range-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .range-row input[type="range"] { flex: 1; }
+      .range-value {
+        font-size: 12px;
+        color: #aaa;
+        min-width: 32px;
+        text-align: right;
+      }
+      .range-hints {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: #555;
+        margin-top: 2px;
+      }
+
+      /* Julia C inputs */
+      #julia-params {
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+      }
+      #julia-params.visible { display: flex; }
+      .julia-row {
+        display: flex;
+        gap: 8px;
+      }
+      .julia-row input[type="number"] {
+        flex: 1;
+        font-size: 12px;
+        padding: 5px 7px;
+      }
+
+      /* Reset button */
+      #btn-reset {
+        background: rgba(120, 145, 255, 0.18);
+        border: 1px solid rgba(120, 145, 255, 0.4);
+        border-radius: 6px;
+        color: #aabfff;
+        padding: 7px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        text-align: center;
+        transition: background 0.15s;
+      }
+      #btn-reset:hover { background: rgba(120, 145, 255, 0.32); }
+
+      /* ── Info bar (bottom-left) ────────────────────────────────── */
+      #info-bar {
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        font-size: 11px;
+        color: rgba(255,255,255,0.45);
+        line-height: 1.7;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      /* ── Help overlay (toggle with H) ─────────────────────────── */
+      #help-overlay {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        background: rgba(10, 10, 16, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 11px;
+        color: #888;
+        z-index: 10;
+        transition: opacity 0.2s;
+      }
+      #help-overlay.hidden { opacity: 0; pointer-events: none; }
+
+      /* Tutor: each help row is flex so the dot aligns with the text */
+      .help-row {
+        display: flex;
+        align-items: center;
+        line-height: 1.9;
+      }
+
+      /* Red dot shown until the user performs each action */
+      .tutor-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #c44;
+        flex-shrink: 0;
+        margin-right: 8px;
+      }
+
+      /* Blink green, then shrink away */
+      @keyframes tutor-dot-complete {
+        0%   { background: #c44; transform: scale(1);   opacity: 1; }
+        20%  { background: #3c6; transform: scale(1.9); opacity: 1; }
+        65%  { background: #3c6; transform: scale(1);   opacity: 1; }
+        100% { background: #3c6; transform: scale(0);   opacity: 0; }
+      }
+      .tutor-dot.completing {
+        animation: tutor-dot-complete 650ms ease-out forwards;
+      }
+
+      /* Whole overlay drifts and fades once every dot is cleared */
+      @keyframes tutor-overlay-done {
+        0%   { opacity: 1; transform: translateY(0);   }
+        60%  { opacity: 1; transform: translateY(0);   }
+        100% { opacity: 0; transform: translateY(10px); }
+      }
+      #help-overlay.tutor-fading {
+        animation: tutor-overlay-done 1.3s ease-out forwards;
+        pointer-events: none;
+      }
+
+      .help-key {
+        display: inline-block;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 3px;
+        padding: 0 5px;
+        font-size: 10px;
+        color: #ccc;
+        margin-right: 4px;
+      }
+
+      /* ── Hide UI hint ─────────────────────────────────────────── */
+      #ui-hint {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        font-size: 11px;
+        color: rgba(255,255,255,0.3);
+        pointer-events: none;
+        z-index: 10;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- The fractal is rendered entirely inside this canvas via WebGL2 -->
+    <canvas id="fractal-canvas"></canvas>
+
+    <!-- Controls panel: fractal selection, coloring, parameters -->
+    <div id="controls">
+      <div class="panel-title"><span>✦</span> Final Fractals</div>
+
+      <div class="control-group">
+        <label>Fractal</label>
+        <select id="select-fractal">
+          <option value="0">Mandelbrot</option>
+          <option value="1">Julia Set</option>
+          <option value="2">Burning Ship</option>
+          <option value="3">Newton (z³ − 1)</option>
+          <option value="4">Tricorn (Mandelbar)</option>
+        </select>
+      </div>
+
+      <!-- Julia set constant — only shown when Julia is selected -->
+      <div id="julia-params">
+        <label>Julia Constant (c = Re + Im·i)</label>
+        <div class="julia-row">
+          <input type="number" id="julia-re" value="-0.7269" step="0.001" placeholder="Re" />
+          <input type="number" id="julia-im" value="0.1889" step="0.001" placeholder="Im" />
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Color Scheme</label>
+        <select id="select-color">
+          <option value="0">Ultra Smooth</option>
+          <option value="1">Fire</option>
+          <option value="2">Electric</option>
+          <option value="3">Grayscale</option>
+          <option value="4">Rainbow</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Detail Level</label>
+        <div class="range-row">
+          <input type="range" id="range-iterations" min="32" max="2048" step="16" value="256" />
+          <span class="range-value" id="label-iterations">256</span>
+        </div>
+        <div class="range-hints">
+          <span>← faster</span>
+          <span>more detail →</span>
+        </div>
+      </div>
+
+      <button id="btn-reset">↺ Reset View</button>
+    </div>
+
+    <!-- Bottom-left: live coordinates and zoom level -->
+    <div id="info-bar">
+      <div id="info-coords">Re: 0.000000 &nbsp; Im: 0.000000</div>
+      <div id="info-zoom">Zoom: 1.00×</div>
+      <div id="info-fractal">Mandelbrot</div>
+    </div>
+
+    <!-- Bottom-right: keyboard / mouse shortcut reference + interactive tutor -->
+    <div id="help-overlay">
+      <div class="help-row" data-action="pan-drag">   <span class="tutor-dot"></span><span class="help-key">Drag</span> Pan</div>
+      <div class="help-row" data-action="zoom-scroll"> <span class="tutor-dot"></span><span class="help-key">Scroll</span> Zoom</div>
+      <div class="help-row" data-action="zoom-click">  <span class="tutor-dot"></span><span class="help-key">Dbl-click</span> Zoom to point</div>
+      <div class="help-row" data-action="rotate">      <span class="tutor-dot"></span><span class="help-key">Ctrl+Drag</span> Rotate</div>
+      <div class="help-row" data-action="pan-keys">    <span class="tutor-dot"></span><span class="help-key">↑↓←→</span> Pan</div>
+      <div class="help-row" data-action="zoom-keys">   <span class="tutor-dot"></span><span class="help-key">+</span><span class="help-key">−</span> Zoom</div>
+      <div class="help-row" data-action="reset">       <span class="tutor-dot"></span><span class="help-key">R</span> Reset view</div>
+      <div class="help-row" data-action="toggle-ui">   <span class="tutor-dot"></span><span class="help-key">U</span> Toggle UI</div>
+      <div class="help-row" data-action="toggle-help"> <span class="tutor-dot"></span><span class="help-key">H</span> Toggle help</div>
+    </div>
+
+    <div id="ui-hint">U — toggle UI</div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
