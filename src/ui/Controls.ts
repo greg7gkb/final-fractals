@@ -147,7 +147,10 @@ export class Controls {
         }, { once: true });
       };
       if (dot) {
-        dot.addEventListener('animationend', startFade, { once: true });
+        dot.addEventListener('animationend', (e) => {
+          e.stopPropagation(); // prevent the dot's animationend bubbling up to
+          startFade();         // the overlay and firing its own listener early
+        }, { once: true });
       } else {
         startFade(); // no dot to wait for — fade immediately
       }
