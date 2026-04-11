@@ -137,14 +137,16 @@ export class Controls {
     // Check if every action is now done
     if (TUTOR_ACTIONS.every(a => this.tutorCompleted.has(a))) {
       this.tutorFinished = true;
-      // Wait for the last dot to finish blinking, then fade the whole overlay
+      // Wait for the last dot to finish blinking (650 ms), then fade the overlay.
+      // The extra 50 ms gives the animation a moment to fully settle before
+      // the overlay starts moving.
       setTimeout(() => {
         this.helpOverlay.classList.add('tutor-fading');
         this.helpOverlay.addEventListener('animationend', () => {
           this.helpOverlay.classList.remove('tutor-fading');
           this.helpOverlay.classList.add('hidden');
         }, { once: true });
-      }, 450);
+      }, 700);
     }
   }
 
