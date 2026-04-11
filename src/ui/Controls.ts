@@ -21,7 +21,11 @@ export class Controls {
   // Tracks which help-overlay actions the user has performed.
   // Once all are done the overlay fades away automatically.
   private tutorCompleted = new Set<string>();
-  private tutorFinished = false;
+  private tutorFinished  = false;
+  // True from the moment all actions are done until the overlay is fully hidden.
+  // Blocks toggleHelp() from closing the overlay via key-repeat or a stray H press
+  // while the dot animation and fade sequence are in progress.
+  private tutorDismissing = false;
 
   // DOM references
   private selectFractal: HTMLSelectElement;
@@ -108,10 +112,11 @@ export class Controls {
     const wasFinished = this.tutorFinished;
     this.markTutorAction('toggle-help');
     const justFinished = !wasFinished && this.tutorFinished;
-    if (!justFinished) {
+    // Also suppress while the dismissal fade is running — key-repeat or a second
+    // H press would otherwise close the overlay before the dot animation finishes.
+    if (!justFinished && !this.tutorDismissing) {
       this.helpOverlay.classList.toggle('hidden');
     }
-    // (If justFinished, the fade timeout set in markTutorAction will hide it instead.)
   }
 
   /**
@@ -136,21 +141,16 @@ export class Controls {
 
     // Check if every action is now done
     if (TUTOR_ACTIONS.every(a => this.tutorCompleted.has(a))) {
-      this.tutorFinished = true;
-      // Wait for the last dot's animation to fully finish, then fade the overlay.
-      // Listening to animationend directly is exact — no hardcoded timeout needed.
+      this.tutorFinished  = true;
+      this.tutorDismissing = true; // block H key-repeat from closing overlay early
       const startFade = () => {
         this.helpOverlay.classList.add('tutor-fading');
-        // animationend bubbles — dots finishing after startFade runs will also
-        // fire this listener. Guard by animationName so we only act on the
-        // overlay's own animation, not on events bubbled up from child dots.
-        // { once: true } is intentionally omitted: a bubbled dot event would
-        // consume it before the real overlay event arrives.
         const onOverlayDone = (e: Event) => {
           if ((e as AnimationEvent).animationName !== 'tutor-overlay-done') return;
           this.helpOverlay.removeEventListener('animationend', onOverlayDone);
           this.helpOverlay.classList.remove('tutor-fading');
           this.helpOverlay.classList.add('hidden');
+          this.tutorDismissing = false; // H works normally again once fully hidden
         };
         this.helpOverlay.addEventListener('animationend', onOverlayDone);
       };
