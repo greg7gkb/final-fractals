@@ -73,6 +73,7 @@ export class Controls {
     this.uniforms.fractalType = type;
     this.selectFractal.value = String(type);
     this.updateJuliaVisibility();
+    this.updateColorSchemeAvailability();
     this.syncInfoFractal();
   }
 
@@ -152,6 +153,7 @@ export class Controls {
       const type = parseInt(this.selectFractal.value, 10);
       this.uniforms.fractalType = type;
       this.updateJuliaVisibility();
+      this.updateColorSchemeAvailability();
       this.syncInfoFractal();
       this.onFractalChange(type);
     });
@@ -189,6 +191,7 @@ export class Controls {
     this.juliaReInput.value    = String(this.uniforms.juliaRe);
     this.juliaImInput.value    = String(this.uniforms.juliaIm);
     this.updateJuliaVisibility();
+    this.updateColorSchemeAvailability();
     this.syncInfoFractal();
   }
 
@@ -198,6 +201,16 @@ export class Controls {
     } else {
       this.juliaPanelEl.classList.remove('visible');
     }
+  }
+
+  // Newton uses root-convergence colouring (not escape-time), so the palette
+  // selector is meaningless for it. Disable it to avoid confusing the user.
+  private updateColorSchemeAvailability(): void {
+    const isNewton = this.uniforms.fractalType === 3;
+    this.selectColor.disabled = isNewton;
+    this.selectColor.title = isNewton
+      ? 'Newton uses fixed root colours — palette does not apply'
+      : '';
   }
 
   private syncInfoFractal(): void {
