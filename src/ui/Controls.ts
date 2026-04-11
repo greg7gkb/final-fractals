@@ -156,8 +156,10 @@ export class Controls {
       this.updateColorSchemeAvailability();
       this.syncInfoFractal();
       this.onFractalChange(type);
+      this.selectFractal.blur(); // return keyboard focus to the fractal
     });
 
+    // Julia constant inputs intentionally keep focus so the user can type freely.
     this.juliaReInput.addEventListener('input', () => {
       this.uniforms.juliaRe = parseFloat(this.juliaReInput.value) || 0;
       this.onParamChange();
@@ -171,6 +173,7 @@ export class Controls {
     this.selectColor.addEventListener('change', () => {
       this.uniforms.colorScheme = parseInt(this.selectColor.value, 10);
       this.onParamChange();
+      this.selectColor.blur(); // return keyboard focus to the fractal
     });
 
     this.rangeIterations.addEventListener('input', () => {
@@ -179,8 +182,13 @@ export class Controls {
       this.labelIterations.textContent = String(v);
       this.onParamChange();
     });
+    // Blur the slider on pointerup so keyboard panning works immediately after
+    this.rangeIterations.addEventListener('pointerup', () => this.rangeIterations.blur());
 
-    this.btnReset.addEventListener('click', () => this.onReset());
+    this.btnReset.addEventListener('click', () => {
+      this.onReset();
+      this.btnReset.blur();
+    });
   }
 
   private syncFromUniforms(): void {
