@@ -54,6 +54,13 @@ function fmt(v: number, step: number): string {
   return v.toFixed(decimals);
 }
 
+// ── Typography ───────────────────────────────────────────────────────────────
+// Sizes are in CSS px — multiplied by devicePixelRatio at draw time because
+// the canvas backing store is scaled up for HiDPI/Retina displays.
+const FONT_FAMILY     = 'monospace';
+const FONT_SIZE_COORD = 11;   // grid coordinate labels  (CSS px)
+const FONT_SIZE_AXIS  = 13;   // Re / Im axis labels     (CSS px)
+
 // ── GridOverlay class ─────────────────────────────────────────────────────────
 
 export class GridOverlay {
@@ -98,8 +105,9 @@ export class GridOverlay {
     const imMax = camera.centerIm + margin;
 
     const step = niceStep(visH, 8);
+    const dpr  = window.devicePixelRatio ?? 1;
 
-    ctx.font      = '20px monospace';
+    ctx.font      = `${FONT_SIZE_COORD * dpr}px ${FONT_FAMILY}`;
     ctx.textAlign = 'center';
 
     // ── Vertical grid lines (constant Re) ──────────────────────────────────
@@ -155,8 +163,8 @@ export class GridOverlay {
     }
 
     // ── Axis labels (Re / Im) ───────────────────────────────────────────────
+    ctx.font         = `${FONT_SIZE_AXIS * dpr}px ${FONT_FAMILY}`;
     ctx.fillStyle    = 'rgba(255,255,255,0.85)';
-    // ctx.font         = '12px monospace';
     ctx.textBaseline = 'middle';
 
     // "Re" label: on the real axis, near the right edge of the screen
