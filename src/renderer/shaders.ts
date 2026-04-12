@@ -133,7 +133,7 @@ uniform float u_zoom;        // visible height in complex units (float32 is fine
 uniform float u_rotation;    // rotation in radians
 
 uniform int   u_maxIterations;
-// 0=Mandelbrot  1=Julia  2=BurningShip  3=Newton  4=Tricorn
+// 0=Mandelbrot  1=Julia  2=BurningShip  3=Newton  4=Tricorn  5=Custom
 uniform int   u_fractalType;
 uniform vec2  u_juliaC;      // Julia constant (user-typed, float32 precision is enough)
 // 0=UltraSmooth  1=Fire  2=Electric  3=Grayscale  4=Rainbow
@@ -325,6 +325,24 @@ float burningShip(vec2 c_re, vec2 c_im) {
     vec2 re2   = ddMul(az_re, az_re);
     vec2 im2   = ddMul(az_im, az_im);
     vec2 cross = ddMul(az_re, az_im);
+    z_re = ddAdd(ddSub(re2, im2), c_re);
+    z_im = ddAdd(ddMul2(cross),   c_im);
+    if (z_re.x*z_re.x + z_im.x*z_im.x > 4.0) {
+      return smoothCount(i, z_re, z_im) / float(u_maxIterations);
+    }
+  }
+  return 1.0;
+}
+
+// ── Custom: starts as a copy of Mandelbrot — edit this to experiment ─────────
+// z ← z² + c,  z₀ = 0,  c = pixel   (identical to Mandelbrot until modified)
+float custom(vec2 c_re, vec2 c_im) {
+  vec2 z_re = vec2(0.0);
+  vec2 z_im = vec2(0.0);
+  for (int i = 0; i < u_maxIterations; i++) {
+    vec2 re2   = ddMul(z_re, z_re);
+    vec2 im2   = ddMul(z_im, z_im);
+    vec2 cross = ddMul(z_re, z_im);
     z_re = ddAdd(ddSub(re2, im2), c_re);
     z_im = ddAdd(ddMul2(cross),   c_im);
     if (z_re.x*z_re.x + z_im.x*z_im.x > 4.0) {
@@ -534,7 +552,8 @@ void main() {
     if      (u_fractalType == 0) t = mandelbrot(c_re, c_im);
     else if (u_fractalType == 1) t = julia(c_re, c_im);   // z₀ = pixel dd, c = juliaC
     else if (u_fractalType == 2) t = burningShip(c_re, c_im);
-    else                         t = tricorn(c_re, c_im);
+    else if (u_fractalType == 4) t = tricorn(c_re, c_im);
+    else                         t = custom(c_re, c_im);
     fragColor = vec4(applyColorScheme(t), 1.0);
   }
 }

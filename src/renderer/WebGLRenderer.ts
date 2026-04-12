@@ -25,7 +25,7 @@ import { VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC } from './shaders.js';
 import type { Camera } from '../navigation/Camera.js';
 
 export interface FractalUniforms {
-  fractalType: number;   // 0=Mandelbrot 1=Julia 2=BurningShip 3=Newton 4=Tricorn
+  fractalType: number;   // 0=Mandelbrot 1=Julia 2=BurningShip 3=Newton 4=Tricorn 5=Custom
   juliaRe: number;
   juliaIm: number;
   colorScheme: number;   // 0–4

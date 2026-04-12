@@ -32,6 +32,8 @@ const DEFAULT_VIEWS: Camera[] = [
   { centerRe: 0.0,    centerIm: 0.0,    zoom: 3.0,  rotation: 0 },
   // 4 — Tricorn: full view
   { centerRe: -0.25,  centerIm: 0.0,    zoom: 3.2,  rotation: 0 },
+  // 5 — Custom: same default view as Mandelbrot
+  { centerRe: -0.5,   centerIm: 0.0,    zoom: 3.0,  rotation: 0 },
 ];
 
 export function defaultCamera(fractalType: number): Camera {

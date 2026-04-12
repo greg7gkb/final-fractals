@@ -37,7 +37,7 @@ let captureRequested = false;
 // buffer is guaranteed to be populated (avoids the blank-canvas problem that
 // occurs if toBlob() is called outside the render cycle).
 
-const FRACTAL_NAMES_FILE = ['mandelbrot', 'julia', 'burning-ship', 'newton', 'tricorn'];
+const FRACTAL_NAMES_FILE = ['mandelbrot', 'julia', 'burning-ship', 'newton', 'tricorn', 'custom'];
 
 function requestCapture(): void {
   captureRequested = true;

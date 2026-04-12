@@ -8,7 +8,7 @@
 import type { FractalUniforms } from '../renderer/WebGLRenderer.js';
 import type { Camera } from '../navigation/Camera.js';
 
-const FRACTAL_NAMES = ['Mandelbrot', 'Julia Set', 'Burning Ship', 'Newton', 'Tricorn'];
+const FRACTAL_NAMES = ['Mandelbrot', 'Julia Set', 'Burning Ship', 'Newton', 'Tricorn', 'Custom'];
 
 // All action IDs that have a tutor dot in the help overlay (order matters for UX, not logic)
 const TUTOR_ACTIONS = [
