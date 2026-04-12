@@ -36,6 +36,7 @@ export class Controls {
   private rangeIterations: HTMLInputElement;
   private labelIterations: HTMLElement;
   private btnReset: HTMLButtonElement;
+  private btnCapture: HTMLButtonElement;
   private infoBar: HTMLElement;
   private infoCoords: HTMLElement;
   private infoZoom: HTMLElement;
@@ -50,6 +51,7 @@ export class Controls {
     private onFractalChange: (type: number) => void,
     private onParamChange: () => void,
     private onReset: () => void,
+    private onCapture: () => void,
   ) {
     this.selectFractal    = document.getElementById('select-fractal')    as HTMLSelectElement;
     this.juliaPanelEl     = document.getElementById('julia-params')      as HTMLElement;
@@ -59,6 +61,7 @@ export class Controls {
     this.rangeIterations  = document.getElementById('range-iterations')  as HTMLInputElement;
     this.labelIterations  = document.getElementById('label-iterations')  as HTMLElement;
     this.btnReset         = document.getElementById('btn-reset')         as HTMLButtonElement;
+    this.btnCapture       = document.getElementById('btn-capture')       as HTMLButtonElement;
     this.infoBar          = document.getElementById('info-bar')          as HTMLElement;
     this.infoCoords       = document.getElementById('info-coords')       as HTMLElement;
     this.infoZoom         = document.getElementById('info-zoom')         as HTMLElement;
@@ -205,6 +208,11 @@ export class Controls {
     this.btnReset.addEventListener('click', () => {
       this.onReset();
       this.btnReset.blur();
+    });
+
+    this.btnCapture.addEventListener('click', () => {
+      this.onCapture();
+      this.btnCapture.blur();
     });
   }
 

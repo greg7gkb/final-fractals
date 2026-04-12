@@ -125,19 +125,27 @@
         padding: 5px 7px;
       }
 
-      /* Reset button */
-      #btn-reset {
-        background: rgba(120, 145, 255, 0.18);
-        border: 1px solid rgba(120, 145, 255, 0.4);
+      /* Reset + capture buttons share the same base style */
+      #btn-reset, #btn-capture {
         border-radius: 6px;
-        color: #aabfff;
         padding: 7px 12px;
         font-size: 12px;
         cursor: pointer;
         text-align: center;
         transition: background 0.15s;
       }
+      #btn-reset {
+        background: rgba(120, 145, 255, 0.18);
+        border: 1px solid rgba(120, 145, 255, 0.4);
+        color: #aabfff;
+      }
       #btn-reset:hover { background: rgba(120, 145, 255, 0.32); }
+      #btn-capture {
+        background: rgba(80, 200, 140, 0.15);
+        border: 1px solid rgba(80, 200, 140, 0.35);
+        color: #7ddcaa;
+      }
+      #btn-capture:hover { background: rgba(80, 200, 140, 0.28); }
 
       /* ── Info bar (bottom-left) ────────────────────────────────── */
       #info-bar {
@@ -285,6 +293,7 @@
       </div>
 
       <button id="btn-reset">↺ Reset View</button>
+      <button id="btn-capture">⬇ Save Image</button>
     </div>
 
     <!-- Bottom-left: status info (toggle with I) -->
@@ -305,6 +314,7 @@
       <div class="help-row" data-action="pan-keys">    <span class="tutor-dot"></span><span class="help-key">↑↓←→</span> Pan</div>
       <div class="help-row" data-action="zoom-keys">   <span class="tutor-dot"></span><span class="help-key">+</span><span class="help-key">−</span> Zoom</div>
       <div class="help-row" data-action="reset">       <span class="tutor-dot"></span><span class="help-key">R</span> Reset view</div>
+      <div class="help-row">                           <span class="tutor-dot" style="visibility:hidden"></span><span class="help-key">S</span> Save image</div>
       <div class="help-row" data-action="toggle-info"> <span class="tutor-dot"></span><span class="help-key">I</span> Toggle info bar</div>
       <div class="help-row" data-action="toggle-ui">   <span class="tutor-dot"></span><span class="help-key">U</span> Toggle UI</div>
       <div class="help-row" data-action="toggle-help"> <span class="tutor-dot"></span><span class="help-key">H</span> Toggle help</div>

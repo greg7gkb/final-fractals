@@ -29,6 +29,37 @@ const uniforms: FractalUniforms = {
 };
 
 let dirty = true;  // render at least once on startup
+let captureRequested = false;
+
+// ── Image capture ──────────────────────────────────────────────────────────
+// We request the capture during the next render frame so the WebGL drawing
+// buffer is guaranteed to be populated (avoids the blank-canvas problem that
+// occurs if toBlob() is called outside the render cycle).
+
+const FRACTAL_NAMES_FILE = ['mandelbrot', 'julia', 'burning-ship', 'newton', 'tricorn'];
+
+function requestCapture(): void {
+  captureRequested = true;
+  dirty = true;  // ensure a render frame fires even if nothing has changed
+}
+
+function executeCapture(): void {
+  const name  = FRACTAL_NAMES_FILE[uniforms.fractalType] ?? 'fractal';
+  const zoom  = (3 / camera.zoom).toFixed(1);
+  const re    = camera.centerRe.toFixed(6);
+  const im    = camera.centerIm.toFixed(6);
+  const filename = `fractal_${name}_zoom${zoom}x_${re}_${im}.png`;
+
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
 
 // ── FPS tracking ───────────────────────────────────────────────────────────
 // We only render when dirty, so we track time between actual render calls
@@ -92,6 +123,8 @@ const controls = new Controls(
     inputHandler.setCamera(camera);
     dirty = true;
   },
+  // onCapture: save current frame as PNG
+  () => requestCapture(),
 );
 
 // ── Input handling ─────────────────────────────────────────────────────────
@@ -128,6 +161,8 @@ const inputHandler = new InputHandler(
     inputHandler.setCamera(camera);
     dirty = true;
   },
+  // onCapture
+  () => requestCapture(),
   // onAction — tutor tracking for drag/scroll/click/rotate/keyboard actions
   (action) => controls.markTutorAction(action),
 );
@@ -139,6 +174,10 @@ function frame(): void {
 
   if (dirty) {
     renderer.render(camera, uniforms);
+    if (captureRequested) {
+      executeCapture();   // called right after render so the drawing buffer is populated
+      captureRequested = false;
+    }
     recordRender();
     controls.updateInfoBar(camera, currentFps());
     dirty = false;

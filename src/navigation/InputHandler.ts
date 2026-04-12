@@ -25,6 +25,7 @@ type UpdateCallback = () => void;
 type FractalSwitchCallback = (index: number) => void;
 type UIToggleCallback = (which: 'ui' | 'help' | 'info') => void;
 type ResetCallback = () => void;
+type CaptureCallback = () => void;
 // Fired whenever the user performs a trackable action (tutor system).
 // IDs match the data-action attributes in the help overlay HTML.
 type ActionCallback = (action: string) => void;
@@ -36,6 +37,7 @@ export class InputHandler {
   private onFractalSwitch: FractalSwitchCallback;
   private onUIToggle: UIToggleCallback;
   private onReset: ResetCallback;
+  private onCapture: CaptureCallback;
   private onAction: ActionCallback;
 
   // Drag state
@@ -59,6 +61,7 @@ export class InputHandler {
     onFractalSwitch: FractalSwitchCallback,
     onUIToggle: UIToggleCallback,
     onReset: ResetCallback,
+    onCapture: CaptureCallback,
     onAction: ActionCallback,
   ) {
     this.canvas = canvas;
@@ -67,6 +70,7 @@ export class InputHandler {
     this.onFractalSwitch = onFractalSwitch;
     this.onUIToggle = onUIToggle;
     this.onReset = onReset;
+    this.onCapture = onCapture;
     this.onAction = onAction;
 
     this.attachListeners();
@@ -327,6 +331,12 @@ export class InputHandler {
       case 'r':
       case 'R':
         this.onReset();
+        break;
+
+      // ── Save image ────────────────────────────────────────────────────
+      case 's':
+      case 'S':
+        this.onCapture();
         break;
 
       // ── Toggle UI ─────────────────────────────────────────────────────
