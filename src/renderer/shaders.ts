@@ -137,7 +137,7 @@ uniform int   u_maxIterations;
 uniform int   u_fractalType;
 uniform vec2  u_juliaC;      // Julia constant (user-typed, float32 precision is enough)
 // 0=UltraSmooth  1=Fire  2=Electric  3=Grayscale  4=Rainbow
-// 5=SharkBlue  6=GTSilver  7=Carmine
+// 5=SharkBlue  6=Silver  7=Carmine  8=Bernstein  9=Twilight  10=Lava
 uniform int   u_colorScheme;
 
 out vec4 fragColor;
@@ -459,6 +459,43 @@ vec3 colorCarmine(float t) {
   return         mix(vec3(0.72, 0.04, 0.04), vec3(1.00, 0.82, 0.62), (v - 0.60) / 0.40);
 }
 
+// ── Bernstein — the classic deep-zoom Mandelbrot palette ──────────────────
+// Uses cubic Bernstein basis polynomials to trace a smooth arc:
+//   black → midnight blue → cobalt → electric cyan → white → black
+// The arc repeats every 1/6 of t, so each "ring" of the fractal gets its
+// own pass through the full colour progression. Because Bernstein(0) =
+// Bernstein(1) = 0 the repeats meet at black — no hard edges.
+vec3 colorBernstein(float t) {
+  if (t >= 1.0) return vec3(0.0);
+  float u = fract(t * 6.0);               // 6 full cycles across escape range
+  float r = 9.0   * (1.0-u) * u*u*u;
+  float g = 15.0  * (1.0-u)*(1.0-u) * u*u;
+  float b = 8.5   * (1.0-u)*(1.0-u)*(1.0-u) * u;
+  return clamp(vec3(r, g, b), 0.0, 1.0);
+}
+
+// ── Twilight — deep purple → magenta → amber → pale gold ─────────────────
+// Warm-cool contrast makes fine boundary detail pop, especially on Julia sets.
+vec3 colorTwilight(float t) {
+  if (t >= 1.0) return vec3(0.0);
+  float ring = 0.5 + 0.5 * sin(t * 47.1);
+  float v    = clamp(pow(t, 0.55) * (0.82 + 0.18 * ring), 0.0, 1.0);
+  if (v < 0.33) return mix(vec3(0.02, 0.00, 0.05), vec3(0.25, 0.00, 0.55), v / 0.33);
+  if (v < 0.66) return mix(vec3(0.25, 0.00, 0.55), vec3(0.90, 0.35, 0.10), (v-0.33)/0.33);
+  return         mix(vec3(0.90, 0.35, 0.10), vec3(1.00, 0.95, 0.70), (v-0.66)/0.34);
+}
+
+// ── Lava — molten black → deep red → bright orange → pale yellow ──────────
+// High contrast; works especially well with Burning Ship and Tricorn.
+vec3 colorLava(float t) {
+  if (t >= 1.0) return vec3(0.0);
+  float ring = 0.5 + 0.5 * sin(t * 47.1);
+  float v    = clamp(pow(t, 0.55) * (0.82 + 0.18 * ring), 0.0, 1.0);
+  if (v < 0.40) return mix(vec3(0.03, 0.00, 0.00), vec3(0.65, 0.05, 0.00), v / 0.40);
+  if (v < 0.75) return mix(vec3(0.65, 0.05, 0.00), vec3(1.00, 0.50, 0.05), (v-0.40)/0.35);
+  return         mix(vec3(1.00, 0.50, 0.05), vec3(1.00, 0.98, 0.80), (v-0.75)/0.25);
+}
+
 vec3 applyColorScheme(float t) {
   if      (u_colorScheme == 0) return colorUltraSmooth(t);
   else if (u_colorScheme == 1) return colorFire(t);
@@ -467,7 +504,10 @@ vec3 applyColorScheme(float t) {
   else if (u_colorScheme == 4) return colorRainbow(t);
   else if (u_colorScheme == 5) return colorSharkBlue(t);
   else if (u_colorScheme == 6) return colorGTSilver(t);
-  else                         return colorCarmine(t);
+  else if (u_colorScheme == 7) return colorCarmine(t);
+  else if (u_colorScheme == 8) return colorBernstein(t);
+  else if (u_colorScheme == 9) return colorTwilight(t);
+  else                         return colorLava(t);
 }
 vec3 colorNewton(float v) {
   if (v < 0.0) return vec3(0.02);

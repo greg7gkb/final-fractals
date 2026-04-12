@@ -24,7 +24,7 @@ const uniforms: FractalUniforms = {
   fractalType:   0,       // Mandelbrot
   juliaRe:      -0.7269,  // a pretty Julia set by default
   juliaIm:       0.1889,
-  colorScheme:   0,       // Ultra Smooth
+  colorScheme:   8,       // Bernstein (default)
   maxIterations: 256,
 };
 
