@@ -58,8 +58,8 @@ function fmt(v: number, step: number): string {
 // Sizes are in CSS px — multiplied by devicePixelRatio at draw time because
 // the canvas backing store is scaled up for HiDPI/Retina displays.
 const FONT_FAMILY     = 'monospace';
-const FONT_SIZE_COORD = 11;   // grid coordinate labels  (CSS px)
-const FONT_SIZE_AXIS  = 13;   // Re / Im axis labels     (CSS px)
+const FONT_SIZE_COORD = 12;   // grid coordinate labels  (CSS px)
+const FONT_SIZE_AXIS  = 14;   // Re / Im axis labels     (CSS px)
 
 // ── GridOverlay class ─────────────────────────────────────────────────────────
 
@@ -167,11 +167,11 @@ export class GridOverlay {
     ctx.fillStyle    = 'rgba(255,255,255,0.85)';
     ctx.textBaseline = 'middle';
 
-    // "Re" label: on the real axis, near the right edge of the screen
-    const [reLabX, reLabY] = complexToPixel(camera.centerRe + visW * 0.42, 0, camera, w, h);
+    // "Re" label: on the real axis, near the left edge of the screen
+    const [reLabX, reLabY] = complexToPixel(camera.centerRe - visW * 0.42, 0, camera, w, h);
     if (reLabX > 0 && reLabX < w && reLabY > 0 && reLabY < h) {
-      ctx.textAlign = 'right';
-      ctx.fillText('Re', reLabX, reLabY - 10);
+      ctx.textAlign = 'left';
+      ctx.fillText('Re', reLabX, reLabY - 18);
     }
 
     // "Im" label: on the imaginary axis, near the top edge of the screen
