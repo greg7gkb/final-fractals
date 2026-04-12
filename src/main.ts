@@ -189,9 +189,12 @@ function frame(): void {
     }
     gridOverlay.draw(camera);
     recordRender();
-    controls.updateInfoBar(camera, currentFps());
     dirty = false;
   }
+
+  // updateInfoBar runs every rAF tick (not just when dirty) so the FPS counter
+  // can tick down to 0 after the 2-second idle window, even when nothing is rendering.
+  controls.updateInfoBar(camera, currentFps());
 
   requestAnimationFrame(frame);
 }
