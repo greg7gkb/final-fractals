@@ -15,6 +15,7 @@ import { WebGLRenderer, type FractalUniforms } from './renderer/WebGLRenderer.js
 import { defaultCamera } from './navigation/Camera.js';
 import { InputHandler } from './navigation/InputHandler.js';
 import { Controls } from './ui/Controls.js';
+import { GridOverlay } from './ui/GridOverlay.js';
 
 // ── Initial state ──────────────────────────────────────────────────────────
 
@@ -96,6 +97,7 @@ function resizeCanvas(): void {
     canvas.width  = w;
     canvas.height = h;
     renderer.resize(w, h);
+    gridOverlay.resize(w, h);  // keep overlay canvas in sync
     dirty = true;
   }
 }
@@ -103,6 +105,12 @@ function resizeCanvas(): void {
 // ── Renderer ───────────────────────────────────────────────────────────────
 
 const renderer = new WebGLRenderer(canvas);
+
+// ── Grid overlay ───────────────────────────────────────────────────────────
+
+const gridOverlay = new GridOverlay();
+
+// Resize both canvases together — order matters, gridOverlay must exist first
 resizeCanvas();
 
 // ── Controls ───────────────────────────────────────────────────────────────
@@ -152,6 +160,7 @@ const inputHandler = new InputHandler(
       controls.markTutorAction('toggle-info');
       controls.toggleInfo();
     }
+    if (which === 'grid') { gridOverlay.toggle(); dirty = true; }
     if (which === 'help') controls.toggleHelp(); // handles tutor internally
   },
   // onReset
@@ -178,6 +187,7 @@ function frame(): void {
       executeCapture();   // called right after render so the drawing buffer is populated
       captureRequested = false;
     }
+    gridOverlay.draw(camera);
     recordRender();
     controls.updateInfoBar(camera, currentFps());
     dirty = false;

@@ -25,6 +25,17 @@
       }
       #fractal-canvas.dragging { cursor: grabbing; }
 
+      /* ── Grid overlay canvas (sits on top, pointer-events: none) ─ */
+      #grid-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 5;
+      }
+
       /* ── Controls panel ───────────────────────────────────────── */
       #controls {
         position: fixed;
@@ -299,6 +310,9 @@
       <button id="btn-capture">⬇ Save Image</button>
     </div>
 
+    <!-- Grid overlay canvas (toggle with G) -->
+    <canvas id="grid-canvas" class="hidden"></canvas>
+
     <!-- Bottom-left: status info (toggle with I) -->
     <div id="info-bar" class="hidden">
       <div id="info-coords">Re: 0.000000 &nbsp; Im: 0.000000</div>
@@ -318,6 +332,7 @@
       <div class="help-row" data-action="zoom-keys">   <span class="tutor-dot"></span><span class="help-key">+</span><span class="help-key">−</span> Zoom</div>
       <div class="help-row" data-action="reset">       <span class="tutor-dot"></span><span class="help-key">R</span> Reset view</div>
       <div class="help-row">                           <span class="tutor-dot" style="visibility:hidden"></span><span class="help-key">S</span> Save image</div>
+      <div class="help-row">                           <span class="tutor-dot" style="visibility:hidden"></span><span class="help-key">G</span> Toggle grid</div>
       <div class="help-row" data-action="toggle-info"> <span class="tutor-dot"></span><span class="help-key">I</span> Toggle info bar</div>
       <div class="help-row" data-action="toggle-ui">   <span class="tutor-dot"></span><span class="help-key">U</span> Toggle UI</div>
       <div class="help-row" data-action="toggle-help"> <span class="tutor-dot"></span><span class="help-key">H</span> Toggle help</div>
