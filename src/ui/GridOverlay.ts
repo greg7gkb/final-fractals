@@ -79,14 +79,13 @@ export class GridOverlay {
     this.canvas.height = height;
   }
 
-  /** Redraw the overlay for the current camera. No-op when hidden. */
+  /** Redraw the overlay for the current camera. Clears when hidden. */
   draw(camera: Camera): void {
-    if (!this.visible) return;
-
     const w   = this.canvas.width;
     const h   = this.canvas.height;
     const ctx = this.ctx;
     ctx.clearRect(0, 0, w, h);
+    if (!this.visible) return;
 
     const visH   = camera.zoom;
     const visW   = camera.zoom * (w / h);
