@@ -334,19 +334,24 @@ float burningShip(vec2 c_re, vec2 c_im) {
   return 1.0;
 }
 
-// ── Custom: starts as a copy of Mandelbrot — edit this to experiment ─────────
-// z ← z² + c,  z₀ = 0,  c = pixel   (identical to Mandelbrot until modified)
+// ── Custom: De Moivre Multibrot — z ← zⁿ + c ────────────────────────────────
+// Uses De Moivre's theorem: zⁿ = rⁿ · (cos(nθ) + i·sin(nθ))
+// where r = |z| and θ = arg(z).  Drops to float32 (trig has no dd equivalent).
+// Change n to explore different Multibrot sets (n=2 → Mandelbrot, n=3, n=4 …)
 float custom(vec2 c_re, vec2 c_im) {
-  vec2 z_re = vec2(0.0);
-  vec2 z_im = vec2(0.0);
+  float z_re = 0.0;   // float32 — De Moivre can't use dd precision
+  float z_im = 0.0;
+  int n = 3;          // ← change exponent here
   for (int i = 0; i < u_maxIterations; i++) {
-    vec2 re2   = ddMul(z_re, z_re);
-    vec2 im2   = ddMul(z_im, z_im);
-    vec2 cross = ddMul(z_re, z_im);
-    z_re = ddAdd(ddSub(re2, im2), c_re);
-    z_im = ddAdd(ddMul2(cross),   c_im);
-    if (z_re.x*z_re.x + z_im.x*z_im.x > 4.0) {
-      return smoothCount(i, z_re, z_im) / float(u_maxIterations);
+    float r      = length(vec2(z_re, z_im));
+    float theta  = atan(z_im, z_re);
+    float rn     = pow(r, float(n));
+    float new_re = rn * cos(float(n) * theta) + c_re.x;
+    float new_im = rn * sin(float(n) * theta) + c_im.x;
+    z_re = new_re;
+    z_im = new_im;
+    if (z_re*z_re + z_im*z_im > 4.0) {
+      return smoothCount(i, vec2(z_re, 0.0), vec2(z_im, 0.0)) / float(u_maxIterations);
     }
   }
   return 1.0;
@@ -440,7 +445,7 @@ vec3 colorRainbow(float t) {
   return hsv2rgb(fract(t * 5.0 + 0.6), 0.9, 1.0 - t*0.3);
 }
 
-// ── Porsche Shark Blue Metallic ───────────────────────────────────────────
+// ── Shark Blue Metallic ───────────────────────────────────────────
 // Deep navy → rich metallic blue → icy electric highlight.
 // ring: gentle brightness oscillation creates banding without changing hue.
 // pow curve biases luminance so boundary regions (high t) bloom brightest.
@@ -453,7 +458,7 @@ vec3 colorSharkBlue(float t) {
   return         mix(vec3(0.06, 0.25, 0.62), vec3(0.72, 0.89, 1.00), (v - 0.55) / 0.45);
 }
 
-// ── Porsche GT Silver Metallic ────────────────────────────────────────────
+// ── GT Silver Metallic ────────────────────────────────────────────
 // Cold black → steel grey → bright specular silver-white.
 // Slightly cool (blue-grey tint) to evoke brushed aluminium.
 vec3 colorGTSilver(float t) {
@@ -465,9 +470,9 @@ vec3 colorGTSilver(float t) {
   return         mix(vec3(0.30, 0.33, 0.36), vec3(0.92, 0.93, 0.95), (v - 0.50) / 0.50);
 }
 
-// ── Porsche Guards Red (Carmine) ──────────────────────────────────────────
+// ── Guards Red (Carmine) ──────────────────────────────────────────
 // Near-black → deep signal red → orange-white boundary flare.
-// The warm edge stops it feeling flat — classic Porsche racing look.
+// The warm edge stops it feeling flat — classic racing look.
 vec3 colorCarmine(float t) {
   if (t >= 1.0) return vec3(0.0);
   float ring = 0.5 + 0.5 * sin(t * 47.1);
