@@ -194,7 +194,7 @@ function frame(): void {
 
   // updateInfoBar runs every rAF tick (not just when dirty) so the FPS counter
   // can tick down to 0 after the 2-second idle window, even when nothing is rendering.
-  controls.updateInfoBar(camera, currentFps());
+  controls.updateInfoBar(camera, currentFps(), canvas.width, canvas.height);
 
   requestAnimationFrame(frame);
 }

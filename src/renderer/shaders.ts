@@ -339,17 +339,15 @@ float burningShip(vec2 c_re, vec2 c_im) {
 // where r = |z| and θ = arg(z).  Drops to float32 (trig has no dd equivalent).
 // Change n to explore different Multibrot sets (n=2 → Mandelbrot, n=3, n=4 …)
 float custom(vec2 c_re, vec2 c_im) {
+  int n = 3;  // change this to get Multibrot sets: z ← zⁿ + c
   float z_re = 0.0;   // float32 — De Moivre can't use dd precision
   float z_im = 0.0;
-  int n = 3;          // ← change exponent here
   for (int i = 0; i < u_maxIterations; i++) {
     float r      = length(vec2(z_re, z_im));
     float theta  = atan(z_im, z_re);
     float rn     = pow(r, float(n));
-    float new_re = rn * cos(float(n) * theta) + c_re.x;
-    float new_im = rn * sin(float(n) * theta) + c_im.x;
-    z_re = new_re;
-    z_im = new_im;
+    z_re = rn * cos(float(n) * theta) + c_re.x;
+    z_im = rn * sin(float(n) * theta) + c_im.x;
     if (z_re*z_re + z_im*z_im > 4.0) {
       return smoothCount(i, vec2(z_re, 0.0), vec2(z_im, 0.0)) / float(u_maxIterations);
     }

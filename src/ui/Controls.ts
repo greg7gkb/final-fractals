@@ -8,8 +8,6 @@
 import type { FractalUniforms } from '../renderer/WebGLRenderer.js';
 import type { Camera } from '../navigation/Camera.js';
 
-const FRACTAL_NAMES = ['Mandelbrot', 'Julia Set', 'Burning Ship', 'Newton', 'Tricorn', 'Custom'];
-
 // Preset Julia constants — [Re, Im]
 const JULIA_PRESETS: Record<string, [number, number]> = {
   rabbit:      [-0.1226,   0.7449 ],  // Douady's Rabbit — period-3, rabbit-like lobes
@@ -53,7 +51,7 @@ export class Controls {
   private infoZoom: HTMLElement;
   private infoRotation: HTMLElement;
   private infoFps: HTMLElement;
-  private infoFractal: HTMLElement;
+  private infoResolution: HTMLElement;
   private controlsPanel: HTMLElement;
   private helpOverlay: HTMLElement;
 
@@ -79,7 +77,7 @@ export class Controls {
     this.infoZoom         = document.getElementById('info-zoom')         as HTMLElement;
     this.infoRotation     = document.getElementById('info-rotation')     as HTMLElement;
     this.infoFps          = document.getElementById('info-fps')          as HTMLElement;
-    this.infoFractal      = document.getElementById('info-fractal')      as HTMLElement;
+    this.infoResolution   = document.getElementById('info-resolution')   as HTMLElement;
     this.controlsPanel    = document.getElementById('controls')          as HTMLElement;
     this.helpOverlay      = document.getElementById('help-overlay')      as HTMLElement;
 
@@ -93,13 +91,12 @@ export class Controls {
     this.selectFractal.value = String(type);
     this.updateJuliaVisibility();
     this.updateColorSchemeAvailability();
-    this.syncInfoFractal();
   }
 
   /** Update the bottom-left info bar from current camera + perf state */
-  updateInfoBar(camera: Camera, fps: number | null): void {
+  updateInfoBar(camera: Camera, fps: number | null, canvasW: number, canvasH: number): void {
     this.infoCoords.textContent =
-      `Re: ${camera.centerRe.toFixed(6)}   Im: ${camera.centerIm.toFixed(6)}`;
+      `Φ Real: ${camera.centerRe.toFixed(6)}   Imag: ${camera.centerIm.toFixed(6)}`;
 
     // Zoom expressed as a multiplier relative to initial zoom=3
     const zoomX = (3 / camera.zoom).toFixed(2);
@@ -111,6 +108,9 @@ export class Controls {
 
     // FPS — null means idle (no recent renders)
     this.infoFps.textContent = `FPS: ${fps !== null ? fps : 0}`;
+
+    // Physical pixel dimensions — matches the resolution of a saved PNG
+    this.infoResolution.textContent = `Size: ${canvasW} × ${canvasH} px`;
   }
 
   toggleUI(): void {
@@ -186,7 +186,6 @@ export class Controls {
       this.uniforms.fractalType = type;
       this.updateJuliaVisibility();
       this.updateColorSchemeAvailability();
-      this.syncInfoFractal();
       this.onFractalChange(type);
       this.selectFractal.blur(); // return keyboard focus to the fractal
     });
@@ -264,7 +263,6 @@ export class Controls {
     this.juliaImInput.value    = String(this.uniforms.juliaIm);
     this.updateJuliaVisibility();
     this.updateColorSchemeAvailability();
-    this.syncInfoFractal();
   }
 
   private updateJuliaVisibility(): void {
@@ -283,9 +281,5 @@ export class Controls {
     this.selectColor.title = isNewton
       ? 'Newton uses fixed root colours — palette does not apply'
       : '';
-  }
-
-  private syncInfoFractal(): void {
-    this.infoFractal.textContent = FRACTAL_NAMES[this.uniforms.fractalType] ?? '';
   }
 }
