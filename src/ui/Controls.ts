@@ -248,9 +248,10 @@ export class Controls {
       this.btnReset.blur();
     });
 
+    // No blur after capture — mirrors the S key path exactly (just calls onCapture,
+    // no focus side-effects). Canvas mousedown handles focus restoration on next interaction.
     this.btnCapture.addEventListener('click', () => {
       this.onCapture();
-      this.btnCapture.blur();
     });
   }
 
