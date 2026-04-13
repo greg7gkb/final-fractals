@@ -16,7 +16,6 @@ const JULIA_PRESETS: Record<string, [number, number]> = {
   sanmarco:    [-0.7269,   0      ],  // San Marco Dragon — at Mandelbrot period-2 boundary
   dendrite:    [ 0,        1      ],  // Dendrite — tree-like, no interior Fatou domains
   cauliflower: [-0.7,      0.27015],  // Cauliflower / Boundary Valley — bumpy, airy shape
-  dragon:      [-0.12,     0.74   ],  // Heighway Dragon — dense, filled fractal
   dendritic:   [-1.77578,  0      ],  // Dendritic — non-connected with intricate structures
   tree:        [ 0.285,    0.01   ],  // Delicate Tree — fine branching filaments
 };
@@ -207,6 +206,16 @@ export class Controls {
     });
 
     // Julia constant inputs — switching back to "Custom" when the user types manually.
+    // Blur after spinner-arrow clicks (but NOT after clicking the text field to type):
+    // save the value on pointerdown; if it changed by pointerup, a spinner was clicked.
+    const blurAfterSpinner = (input: HTMLInputElement) => {
+      let valOnDown = '';
+      input.addEventListener('pointerdown', () => { valOnDown = input.value; });
+      input.addEventListener('pointerup',   () => { if (input.value !== valOnDown) input.blur(); });
+    };
+    blurAfterSpinner(this.juliaReInput);
+    blurAfterSpinner(this.juliaImInput);
+
     this.juliaReInput.addEventListener('input', () => {
       this.juliaPresetSelect.value = 'custom';
       this.uniforms.juliaRe = parseFloat(this.juliaReInput.value) || 0;
