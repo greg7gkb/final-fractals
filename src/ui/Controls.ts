@@ -37,11 +37,13 @@ export class Controls {
 
   // DOM references
   private selectFractal: HTMLSelectElement;
+  private btnCycleFractal: HTMLButtonElement;
   private juliaPanelEl: HTMLElement;
   private juliaPresetSelect: HTMLSelectElement;
   private juliaReInput: HTMLInputElement;
   private juliaImInput: HTMLInputElement;
   private selectColor: HTMLSelectElement;
+  private btnCycleColor: HTMLButtonElement;
   private rangeIterations: HTMLInputElement;
   private labelIterations: HTMLElement;
   private btnReset: HTMLButtonElement;
@@ -63,11 +65,13 @@ export class Controls {
     private onCapture: () => void,
   ) {
     this.selectFractal    = document.getElementById('select-fractal')    as HTMLSelectElement;
+    this.btnCycleFractal  = document.getElementById('btn-cycle-fractal') as HTMLButtonElement;
     this.juliaPanelEl     = document.getElementById('julia-params')      as HTMLElement;
     this.juliaPresetSelect = document.getElementById('julia-preset')     as HTMLSelectElement;
     this.juliaReInput     = document.getElementById('julia-re')          as HTMLInputElement;
     this.juliaImInput     = document.getElementById('julia-im')          as HTMLInputElement;
     this.selectColor      = document.getElementById('select-color')      as HTMLSelectElement;
+    this.btnCycleColor    = document.getElementById('btn-cycle-color')   as HTMLButtonElement;
     this.rangeIterations  = document.getElementById('range-iterations')  as HTMLInputElement;
     this.labelIterations  = document.getElementById('label-iterations')  as HTMLElement;
     this.btnReset         = document.getElementById('btn-reset')         as HTMLButtonElement;
@@ -190,6 +194,16 @@ export class Controls {
       this.selectFractal.blur(); // return keyboard focus to the fractal
     });
 
+    this.btnCycleFractal.addEventListener('click', () => {
+      const nextIndex = (this.selectFractal.selectedIndex + 1) % this.selectFractal.options.length;
+      this.selectFractal.selectedIndex = nextIndex;
+      const next = parseInt(this.selectFractal.value, 10);
+      this.uniforms.fractalType = next;
+      this.updateJuliaVisibility();
+      this.updateColorSchemeAvailability();
+      this.onFractalChange(next);
+    });
+
     // Julia preset selector — loads canonical constants into the Re/Im inputs.
     this.juliaPresetSelect.addEventListener('change', () => {
       const preset = JULIA_PRESETS[this.juliaPresetSelect.value];
@@ -231,6 +245,13 @@ export class Controls {
       this.uniforms.colorScheme = parseInt(this.selectColor.value, 10);
       this.onParamChange();
       this.selectColor.blur(); // return keyboard focus to the fractal
+    });
+
+    this.btnCycleColor.addEventListener('click', () => {
+      const nextIndex = (this.selectColor.selectedIndex + 1) % this.selectColor.options.length;
+      this.selectColor.selectedIndex = nextIndex;
+      this.uniforms.colorScheme = parseInt(this.selectColor.value, 10);
+      this.onParamChange();
     });
 
     this.rangeIterations.addEventListener('input', () => {
@@ -277,9 +298,10 @@ export class Controls {
   // selector is meaningless for it. Disable it to avoid confusing the user.
   private updateColorSchemeAvailability(): void {
     const isNewton = this.uniforms.fractalType === 3;
-    this.selectColor.disabled = isNewton;
-    this.selectColor.title = isNewton
-      ? 'Newton uses fixed root colours — palette does not apply'
-      : '';
+    this.selectColor.disabled   = isNewton;
+    this.btnCycleColor.disabled = isNewton;
+    const tip = isNewton ? 'Newton uses fixed root colours — palette does not apply' : '';
+    this.selectColor.title   = tip;
+    this.btnCycleColor.title = isNewton ? tip : 'Cycle color scheme';
   }
 }

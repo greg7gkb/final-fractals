@@ -136,6 +136,36 @@
         padding: 5px 7px;
       }
 
+      /* Color-scheme row: cycle button + select side by side */
+      .color-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .color-row select { flex: 1; }
+
+      #btn-cycle-color, #btn-cycle-fractal {
+        flex-shrink: 0;
+        width: 30px;
+        height: 30px;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 6px;
+        color: #ccc;
+        font-size: 26px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s;
+        padding: 0 0 5px 3px;
+      }
+      #btn-cycle-color:hover:not(:disabled),
+      #btn-cycle-fractal:hover:not(:disabled) { background: rgba(255,255,255,0.16); }
+      #btn-cycle-color:disabled,
+      #btn-cycle-fractal:disabled { opacity: 0.3; cursor: default; }
+
       /* Reset + capture buttons share the same base style */
       #btn-reset, #btn-capture {
         border-radius: 6px;
@@ -259,6 +289,8 @@
 
       <div class="control-group">
         <label>Fractal</label>
+        <div class="color-row">
+        <button id="btn-cycle-fractal" title="Cycle fractal">⟳</button>
         <select id="select-fractal">
           <option value="0">Mandelbrot</option>
           <option value="1">Julia Set</option>
@@ -274,6 +306,7 @@
           <option value="11">eᶻ + c</option>
           <option value="12">Rational (λ/z²)</option>
         </select>
+        </div><!-- .color-row -->
       </div>
 
       <!-- Julia set constant — only shown when Julia is selected -->
@@ -296,7 +329,10 @@
 
       <div class="control-group">
         <label>Color Scheme</label>
+        <div class="color-row">
+        <button id="btn-cycle-color" title="Cycle color scheme">⟳</button>
         <select id="select-color">
+          <option value="8">Bernstein</option>
           <option value="0">Ultra Smooth</option>
           <option value="1">Fire</option>
           <option value="2">Electric</option>
@@ -305,10 +341,10 @@
           <option value="5">Shark Blue</option>
           <option value="6">Silver</option>
           <option value="7">Carmine</option>
-          <option value="8">Bernstein</option>
           <option value="9">Twilight</option>
           <option value="10">Lava</option>
         </select>
+        </div><!-- .color-row -->
       </div>
 
       <div class="control-group">

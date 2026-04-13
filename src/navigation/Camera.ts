@@ -45,7 +45,7 @@ const DEFAULT_VIEWS: Camera[] = [
   // 10 — sin(z)+c: interesting bubbles span Re ∈ [−π, π], Im ∈ [−3, 3]
   { centerRe: 0.0,    centerIm: 0.0,    zoom: 10.0, rotation: 0 },
   // 11 — e^z+c: fan structure sits left of the imaginary axis
-  { centerRe: -1.5,   centerIm: 0.0,    zoom: 8.0,  rotation: 0 },
+  { centerRe: 1.0,    centerIm: 0.0,    zoom: 8.0,  rotation: 0 },
   // 12 — Rational (λ/z²): McMullen-style ring around origin
   { centerRe: 0.0,    centerIm: 0.0,    zoom: 4.0,  rotation: 0 },
 ];
