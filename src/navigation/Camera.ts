@@ -87,8 +87,9 @@ export function pixelDeltaToComplex(
   dx: number,
   dy: number,
 ): [number, number] {
-  // pixels → normalised units (same scale as the shader's uv calculation)
-  const scale = camera.zoom / canvas.height;
+  // dx/dy are CSS pixels (from e.clientX/Y); canvas.clientHeight is also CSS pixels,
+  // so this ratio is display-density-independent and gives true 1:1 panning.
+  const scale = camera.zoom / canvas.clientHeight;
   // dx: positive = right → Re increases (natural)
   // dy: positive = down in DOM → we pan upward (see content above) → Im increases
   // No Y-flip here; InputHandler passes raw DOM dy.
