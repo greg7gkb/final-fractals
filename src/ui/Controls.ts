@@ -10,6 +10,17 @@ import type { Camera } from '../navigation/Camera.js';
 
 const FRACTAL_NAMES = ['Mandelbrot', 'Julia Set', 'Burning Ship', 'Newton', 'Tricorn', 'Custom'];
 
+// Preset Julia constants — [Re, Im]
+const JULIA_PRESETS: Record<string, [number, number]> = {
+  rabbit:      [-0.1226,   0.7449 ],  // Douady's Rabbit — period-3, rabbit-like lobes
+  sanmarco:    [-0.7269,   0      ],  // San Marco Dragon — at Mandelbrot period-2 boundary
+  dendrite:    [ 0,        1      ],  // Dendrite — tree-like, no interior Fatou domains
+  cauliflower: [-0.7,      0.27015],  // Cauliflower / Boundary Valley — bumpy, airy shape
+  dragon:      [-0.12,     0.74   ],  // Heighway Dragon — dense, filled fractal
+  dendritic:   [-1.77578,  0      ],  // Dendritic — non-connected with intricate structures
+  tree:        [ 0.285,    0.01   ],  // Delicate Tree — fine branching filaments
+};
+
 // All action IDs that have a tutor dot in the help overlay (order matters for UX, not logic)
 const TUTOR_ACTIONS = [
   'pan-drag', 'zoom-scroll', 'zoom-click', 'rotate',
@@ -30,6 +41,7 @@ export class Controls {
   // DOM references
   private selectFractal: HTMLSelectElement;
   private juliaPanelEl: HTMLElement;
+  private juliaPresetSelect: HTMLSelectElement;
   private juliaReInput: HTMLInputElement;
   private juliaImInput: HTMLInputElement;
   private selectColor: HTMLSelectElement;
@@ -55,6 +67,7 @@ export class Controls {
   ) {
     this.selectFractal    = document.getElementById('select-fractal')    as HTMLSelectElement;
     this.juliaPanelEl     = document.getElementById('julia-params')      as HTMLElement;
+    this.juliaPresetSelect = document.getElementById('julia-preset')     as HTMLSelectElement;
     this.juliaReInput     = document.getElementById('julia-re')          as HTMLInputElement;
     this.juliaImInput     = document.getElementById('julia-im')          as HTMLInputElement;
     this.selectColor      = document.getElementById('select-color')      as HTMLSelectElement;
@@ -179,13 +192,29 @@ export class Controls {
       this.selectFractal.blur(); // return keyboard focus to the fractal
     });
 
-    // Julia constant inputs intentionally keep focus so the user can type freely.
+    // Julia preset selector — loads canonical constants into the Re/Im inputs.
+    this.juliaPresetSelect.addEventListener('change', () => {
+      const preset = JULIA_PRESETS[this.juliaPresetSelect.value];
+      if (preset) {
+        const [re, im] = preset;
+        this.juliaReInput.value    = String(re);
+        this.juliaImInput.value    = String(im);
+        this.uniforms.juliaRe      = re;
+        this.uniforms.juliaIm      = im;
+        this.onParamChange();
+      }
+      this.juliaPresetSelect.blur();
+    });
+
+    // Julia constant inputs — switching back to "Custom" when the user types manually.
     this.juliaReInput.addEventListener('input', () => {
+      this.juliaPresetSelect.value = 'custom';
       this.uniforms.juliaRe = parseFloat(this.juliaReInput.value) || 0;
       this.onParamChange();
     });
 
     this.juliaImInput.addEventListener('input', () => {
+      this.juliaPresetSelect.value = 'custom';
       this.uniforms.juliaIm = parseFloat(this.juliaImInput.value) || 0;
       this.onParamChange();
     });

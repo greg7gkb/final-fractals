@@ -271,10 +271,20 @@
 
       <!-- Julia set constant — only shown when Julia is selected -->
       <div id="julia-params">
-        <label>Julia Constant (c = Re + Im·i)</label>
+        <label>Julia Constant (c)</label>
+        <select id="julia-preset">
+          <option value="custom">— Custom —</option>
+          <option value="rabbit">Douady's Rabbit</option>
+          <option value="sanmarco">San Marco Dragon</option>
+          <option value="dendrite">Dendrite</option>
+          <option value="cauliflower">Cauliflower / Boundary Valley</option>
+          <option value="dragon">Heighway Dragon</option>
+          <option value="dendritic">Dendritic (c = −1.77578)</option>
+          <option value="tree">Delicate Tree (c = 0.285 + 0.01i)</option>
+        </select>
         <div class="julia-row">
-          <input type="number" id="julia-re" value="-0.7269" step="0.001" placeholder="Re" />
-          <input type="number" id="julia-im" value="0.1889" step="0.001" placeholder="Im" />
+          <input type="number" id="julia-re" value="-0.7269" step="0.0001" placeholder="Re" />
+          <input type="number" id="julia-im" value="0.1889" step="0.0001" placeholder="Im" />
         </div>
       </div>
 
