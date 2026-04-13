@@ -2,9 +2,9 @@
 
 An interactive fractal explorer that runs in the browser — no install, no plugins, just WebGL2.
 
-Pan, zoom, and rotate through five classic fractal sets in real time. The rendering is done entirely on the GPU via WebGL2 fragment shaders, so even high iteration counts stay smooth.
+Pan, zoom, and rotate through thirteen fractal sets in real time. Rendering is done entirely on the GPU via WebGL2 fragment shaders, with double-double arithmetic for deep-zoom precision down to ~10⁻¹⁴.
 
-**[Live demo →](https://greg7gkb.github.io/final-fractals/)** *(after GitHub Pages deployment)*
+**[Live demo →](https://greg7gkb.github.io/final-fractals/)**
 
 ![Mandelbrot Set screenshot](docs/screenshot.png)
 
@@ -14,43 +14,21 @@ Pan, zoom, and rotate through five classic fractal sets in real time. The render
 
 | # | Name | Formula | Notes |
 |---|------|---------|-------|
-| 1 | **Mandelbrot** | z ← z² + c,  z₀ = 0 | The classic. c is the pixel. |
-| 2 | **Julia Set** | z ← z² + c,  z₀ = pixel | c is a user-controlled constant — change it to explore wildly different shapes. |
-| 3 | **Burning Ship** | z ← (\|Re(z)\| + \|Im(z)\|·i)² + c | Taking absolute values before squaring "folds" the plane. |
-| 4 | **Newton** | z ← (2z³ + 1) / (3z²) | Colours by which root of z³ = 1 the iteration converges to. |
-| 5 | **Tricorn** | z ← conj(z)² + c | Conjugating z before squaring breaks analytic symmetry, giving a 3-fold "cactus" shape. |
+| 0 | **Mandelbrot** | z ← z² + c,  z₀ = 0 | The classic. c is the pixel. Full dd precision. |
+| 1 | **Julia Set** | z ← z² + c,  z₀ = pixel | c is a user constant — pick from presets or type your own. Full dd precision. |
+| 2 | **Burning Ship** | z ← (\|Re(z)\| + \|Im(z)\|·i)² + c | Absolute values before squaring "fold" the plane into a ship silhouette. |
+| 3 | **Newton** | z ← (2z³ + 1) / (3z²) | Colours by which root of z³ = 1 the iteration converges to. |
+| 4 | **Tricorn** | z ← conj(z)² + c | Conjugating before squaring breaks analytic symmetry, giving a 3-fold cactus shape. |
+| 5 | **Custom** | z ← zⁿ + c,  n = 3 | De Moivre Multibrot — edit the shader to change the exponent. |
+| 6 | **Magnet I** | z ← ((z²+c−1)/(2z+c−2))² | Rational map from renormalisation theory; bulbous Mandelbrot-like chains. |
+| 7 | **Magnet II** | cubic rational analogue of Magnet I | Three root branches produce richer nested-spiral decorations. |
+| 8 | **Phoenix** | z ← z²+c + p·z_prev,  p=−0.5 | Memory term stretches the set into feather/wing shapes. |
+| 9 | **Celtic** | z ← \|Re(z²)\| + i·Im(z²) + c | Mandelbrot with real axis folded — sea-horse tails curl outward. Full dd precision. |
+| 10 | **sin(z) + c** | z ← sin(z) + c | Periodic bubble-galaxy patterns repeating every 2π on the real axis. |
+| 11 | **eᶻ + c** | z ← eᶻ + c | "Explosion" fractal — infinite parallel fingers from a crescent boundary. |
+| 12 | **Rational (λ/z²)** | z ← z²+c+0.25/z² | McMullen-domain ring structure around the origin. |
 
-## Color Schemes
-
-- **Ultra Smooth** — cycling HSV hue with subtle brightness pulses
-- **Fire** — black → red → orange → yellow → white
-- **Electric** — black → indigo → electric blue → cyan → white
-- **Grayscale** — clean luminance ramp
-- **Rainbow** — full HSV sweep (vivid / psychedelic)
-
----
-
-## Controls
-
-### Mouse / Trackpad
-| Action | Effect |
-|--------|--------|
-| Drag | Pan |
-| Scroll wheel | Zoom (centred on cursor) |
-| Double-click | Zoom in ×2 to that point |
-| Ctrl + Drag | Rotate |
-| Pinch | Zoom (touch / precision trackpad) |
-
-### Keyboard
-| Key | Effect |
-|-----|--------|
-| `↑` `↓` `←` `→` | Pan |
-| `+` / `−` | Zoom in / out |
-| `,` / `.` | Rotate |
-| `R` | Reset view |
-| `1`–`5` | Switch fractal |
-| `U` | Toggle UI panels |
-| `H` | Toggle help overlay |
+The Julia Set panel includes a preset picker (Douady's Rabbit, San Marco Dragon, Dendrite, and more) as well as free Re/Im inputs.
 
 ---
 
@@ -68,35 +46,6 @@ Then open `http://localhost:5173` in any modern browser (Chrome, Firefox, Edge, 
 ```bash
 npm run build    # production build → dist/
 npm run preview  # serve the production build locally
-```
-
----
-
-## Deploying to GitHub Pages
-
-1. Edit `vite.config.ts` and set `base: '/final-fractals/'`
-2. Run `npm run build`
-3. Push the `dist/` folder to the `gh-pages` branch, or configure GitHub Actions to do it automatically.
-
-A minimal workflow (`.github/workflows/deploy.yml`):
-
-```yaml
-name: Deploy to GitHub Pages
-on:
-  push:
-    branches: [main]
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: npm ci && npm run build
-      - uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
 ```
 
 ---
@@ -125,22 +74,24 @@ main.ts (frame loop)             Vertex shader (×3 vertices)
   │                              Framebuffer  →  screen
 ```
 
-The CPU side entry point is [`frame()` in `src/main.ts`](src/main.ts#L137), which uses a [dirty flag](src/main.ts#L31) so the GPU is only invoked when the view actually changes. [`gl.drawArrays()`](src/renderer/WebGLRenderer.ts#L142) in `WebGLRenderer` triggers the pipeline.
+The CPU entry point is [`frame()` in `src/main.ts`](src/main.ts), which uses a dirty flag so the GPU is only invoked when the view actually changes.
 
 ### Key files
 
 | File | Purpose |
 |------|---------|
-| [`src/renderer/shaders.ts`](src/renderer/shaders.ts) | All GLSL source code, extensively commented. Start here to understand the math. |
+| [`src/renderer/shaders.ts`](src/renderer/shaders.ts) | All GLSL source — dd arithmetic, all 13 fractal functions, 11 colour palettes. Start here for the math. |
 | [`src/renderer/WebGLRenderer.ts`](src/renderer/WebGLRenderer.ts) | Compiles shaders, links the GPU program, uploads uniforms, issues the draw call. |
-| [`src/navigation/Camera.ts`](src/navigation/Camera.ts) | View state: centre, zoom, rotation. Also the pixel→complex coordinate transform that mirrors the shader logic. |
+| [`src/navigation/Camera.ts`](src/navigation/Camera.ts) | View state: centre, zoom, rotation. Pixel↔complex transforms that mirror the shader logic. |
 | [`src/navigation/InputHandler.ts`](src/navigation/InputHandler.ts) | Translates mouse/touch/keyboard events into camera mutations. |
-| [`src/ui/Controls.ts`](src/ui/Controls.ts) | Wires HTML controls ↔ shader uniforms. |
-| [`src/main.ts`](src/main.ts) | Entry point; `requestAnimationFrame` render loop with dirty-flag optimisation. |
+| [`src/navigation/PanMomentum.ts`](src/navigation/PanMomentum.ts) | Inertial pan coasting after mouse release — O(1) ring buffer velocity sampling, exponential decay RAF loop. |
+| [`src/ui/Controls.ts`](src/ui/Controls.ts) | Wires HTML controls ↔ shader uniforms, including cycle buttons and the Julia preset picker. |
+| [`src/ui/GridOverlay.ts`](src/ui/GridOverlay.ts) | 2D canvas overlay that draws labelled complex-plane gridlines. |
+| [`src/main.ts`](src/main.ts) | Entry point; `requestAnimationFrame` loop with dirty-flag optimisation and FPS tracking. |
 
 ### Coordinate transform
 
-Every pixel needs to know which complex number to test. The transform is implemented twice — once in [`pixelToComplexDD()` in `shaders.ts`](src/renderer/shaders.ts#L231) (GLSL, runs on the GPU) and once in [`pixelToComplex()` in `Camera.ts`](src/navigation/Camera.ts#L115) (TypeScript, used for mouse hit-testing) — and they must stay in sync. The sequence is:
+Every pixel needs to know which complex number to test. The transform is implemented twice — once in `pixelToComplexDD()` in `shaders.ts` (GLSL, GPU) and once in `pixelToComplex()` in `Camera.ts` (TypeScript, mouse hit-testing) — and they must stay in sync:
 
 ```
 pixel (x, y)
@@ -151,19 +102,27 @@ pixel (x, y)
   = c  (the complex number to iterate)
 ```
 
+### Double-double precision
+
+GPU shaders use 32-bit floats (~7 significant digits). At deep zoom, adjacent pixels become indistinguishable and the image degrades into blocky rectangles. To reach ~10⁻¹⁴ zoom depth, Mandelbrot, Julia, Burning Ship, Tricorn, and Celtic use *double-double* arithmetic: every value is represented as a pair of floats `(hi, lo)` where `hi + lo` holds ~15 significant digits. The extra precision costs roughly 4–8× more GPU work per pixel but allows exploration far beyond what single precision permits.
+
 ### Escape-time colouring
 
-For Mandelbrot/Julia/BurningShip/Tricorn, we iterate until `|z|² > 4` (the escape condition), then compute a smooth colour value via [`smoothCount()` in `shaders.ts`](src/renderer/shaders.ts#L250):
+For escape-time fractals we iterate until `|z|² > R²` then smooth the count via:
 
 ```
 smooth_t = (i − log₂(log₂(|z|²) / 2)) / maxIterations
 ```
 
-The nested log removes the discrete "banding" you'd get from raw integer counts, giving smooth colour gradients.
+The nested log removes discrete banding, giving smooth colour gradients across all 11 palettes (Bernstein, Ultra Smooth, Fire, Electric, Grayscale, Rainbow, Shark Blue, Silver, Carmine, Twilight, Lava).
 
 ### Newton fractal
 
-[Newton's method](src/renderer/shaders.ts#L358) for `f(z) = z³ − 1` converges to one of three roots. We colour by *which root* (red / green / blue) and modulate brightness by *convergence speed*. This produces the characteristic tricolour fractal boundary regions.
+Newton's method for `f(z) = z³ − 1` converges to one of three roots. Pixels are coloured by *which root* (red / green / blue) modulated by *convergence speed*, producing the characteristic tricolour boundary regions.
+
+### Pan momentum
+
+Mouse pan releases trigger an inertial coast via `PanMomentum`. A 32-slot O(1) ring buffer records complex-plane velocity samples during the drag. On release, the last 80 ms of samples are summed to estimate velocity, which then decays exponentially in a separate `requestAnimationFrame` loop (frame-rate-independent: `decay = friction^(dt/16.667ms)`).
 
 ---
 
