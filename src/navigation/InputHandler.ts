@@ -119,6 +119,10 @@ export class InputHandler {
   // ── Mouse handlers ────────────────────────────────────────────────────
 
   private onMouseDown = (e: MouseEvent): void => {
+    // Return keyboard focus to the canvas whenever the user clicks on it,
+    // regardless of which control currently holds focus.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+
     this.isDragging = true;
     this.isRotating = e.ctrlKey || e.metaKey;
     this.lastMouseX = e.clientX;
@@ -210,6 +214,7 @@ export class InputHandler {
   // ── Touch handlers (single-finger pan + two-finger pinch-zoom) ─────────
 
   private onTouchStart = (e: TouchEvent): void => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     e.preventDefault();
     if (e.touches.length === 1) {
       this.isDragging = true;
