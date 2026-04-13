@@ -5,7 +5,7 @@
  * onUpdate() so the caller can schedule a re-render.
  *
  * Navigation model (Google Maps-like):
- *   • Drag               — pan
+ *   • Drag               — pan (with momentum on release)
  *   • Scroll wheel       — zoom centred on cursor
  *   • Double-click       — zoom in ×2 centred on click point
  *   • Ctrl + drag        — rotate
@@ -20,6 +20,7 @@
 
 import type { Camera } from './Camera.js';
 import { zoomAt, panBy, pixelToComplex, pixelDeltaToComplex } from './Camera.js';
+import { PanMomentum } from './PanMomentum.js';
 
 type UpdateCallback = () => void;
 type FractalSwitchCallback = (index: number) => void;
@@ -54,6 +55,9 @@ export class InputHandler {
   // Touch / pinch state
   private lastPinchDist = 0;
 
+  // Pan momentum — coasts the view to a stop after mouse release
+  private readonly momentum = new PanMomentum();
+
   constructor(
     canvas: HTMLCanvasElement,
     camera: Camera,
@@ -78,6 +82,7 @@ export class InputHandler {
 
   /** Replace the camera reference (used when fractal type changes and resets view) */
   setCamera(camera: Camera): void {
+    this.momentum.cancel();
     this.camera = camera;
   }
 
@@ -103,6 +108,7 @@ export class InputHandler {
   }
 
   destroy(): void {
+    this.momentum.cancel();
     const c = this.canvas;
     c.removeEventListener('mousedown',  this.onMouseDown);
     c.removeEventListener('mousemove',  this.onMouseMove);
@@ -122,6 +128,9 @@ export class InputHandler {
     // Return keyboard focus to the canvas whenever the user clicks on it,
     // regardless of which control currently holds focus.
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+
+    // Stop any in-flight coast so the grab feels crisp and immediate.
+    this.momentum.cancel();
 
     this.isDragging = true;
     this.isRotating = e.ctrlKey || e.metaKey;
@@ -169,12 +178,18 @@ export class InputHandler {
       // Convert pixel delta → complex-plane displacement and pan
       const [dRe, dIm] = pixelDeltaToComplex(this.camera, this.canvas, -dx, dy);
       panBy(this.camera, dRe, dIm);
+
+      this.momentum.record(dRe, dIm);
+
       this.onAction('pan-drag');
     }
     this.onUpdate();
   };
 
   private onMouseUp = (): void => {
+    if (this.isDragging && !this.isRotating) {
+      this.momentum.launch(this.camera, this.onUpdate);
+    }
     this.isDragging = false;
     this.isRotating = false;
     this.canvas.classList.remove('dragging');
