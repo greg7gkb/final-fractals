@@ -134,6 +134,7 @@ uniform float u_rotation;    // rotation in radians
 
 uniform int   u_maxIterations;
 // 0=Mandelbrot  1=Julia  2=BurningShip  3=Newton  4=Tricorn  5=Custom
+// 6=MagnetI  7=MagnetII  8=Phoenix  9=Celtic  10=sin(z)+c  11=e^z+c  12=Rational
 uniform int   u_fractalType;
 uniform vec2  u_juliaC;      // Julia constant (user-typed, float32 precision is enough)
 // 0=UltraSmooth  1=Fire  2=Electric  3=Grayscale  4=Rainbow
@@ -381,7 +382,7 @@ float tricorn(vec2 c_re, vec2 c_im) {
 // Newton's method converges quickly (quadratically), so deep zoom isn't as
 // interesting here as for the escape-time sets. Float32 is adequate.
 //
-// Complex arithmetic helpers (float32 only, for Newton):
+// Complex arithmetic helpers (float32 only, shared by Newton and all new fractals):
 vec2 cMul(vec2 a, vec2 b) {
   return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
 }
@@ -389,6 +390,8 @@ vec2 cDiv(vec2 a, vec2 b) {
   float d = dot(b, b);
   return vec2(a.x*b.x + a.y*b.y, a.y*b.x - a.x*b.y) / d;
 }
+// z² — slight optimisation over cMul(z,z): saves 2 multiplies
+vec2 cSq(vec2 z) { return vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y); }
 
 float newton(vec2 z) {
   const vec2 root0 = vec2(1.0,   0.0);
@@ -408,6 +411,152 @@ float newton(vec2 z) {
     if (dot(z - root2, z - root2) < THRESH) return 2.0 + speed;
   }
   return -1.0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NEW FRACTAL FUNCTIONS  (float32, except Celtic which uses dd)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Smooth-count note: smoothCount(i, vec2(z.x,0), vec2(z.y,0)) works for any
+// escape radius — the log₂log₂ formula just phase-shifts the palette slightly
+// for larger radii but stays perfectly smooth. Used everywhere below.
+
+// ── Magnet I: z ← ((z² + c − 1) / (2z + c − 2))²  ─────────────────────────
+// Rational map from renormalisation theory. The squared ratio creates bulbous
+// Mandelbrot-like copies along a shared backbone — resembles a chain of magnets.
+// Float32; escape at |z|² > 10 000 (set converges to ±1, not 0).
+float magnetI(vec2 c) {
+  vec2 z   = vec2(0.0);
+  vec2 cm1 = c - vec2(1.0, 0.0);   // c − 1
+  vec2 cm2 = c - vec2(2.0, 0.0);   // c − 2
+  for (int i = 0; i < u_maxIterations; i++) {
+    vec2 num = cSq(z) + cm1;                   // z² + c − 1
+    vec2 den = 2.0*z  + cm2;                   // 2z + c − 2
+    if (dot(den, den) < 1e-10) break;          // near pole
+    z = cSq(cDiv(num, den));
+    if (dot(z, z) > 10000.0) {
+      return smoothCount(i, vec2(z.x, 0.0), vec2(z.y, 0.0)) / float(u_maxIterations);
+    }
+  }
+  return 1.0;
+}
+
+// ── Magnet II: cubic rational map — cubic analogue of Magnet I ──────────────
+// Numerator:   z³ + 3(c−1)z + (c−1)(c−2)
+// Denominator: 3z² + 3(c−2)z + (c−1)(c−2) + 1
+// z_{n+1} = (num/den)²
+// Richer structure than Magnet I: three root branches produce more intricate
+// self-similar decorations with deeper nested spirals.
+float magnetII(vec2 c) {
+  vec2 z   = vec2(0.0);
+  vec2 cm1 = c - vec2(1.0, 0.0);
+  vec2 cm2 = c - vec2(2.0, 0.0);
+  vec2 p12 = cMul(cm1, cm2);        // (c−1)(c−2)
+  for (int i = 0; i < u_maxIterations; i++) {
+    vec2 z2  = cSq(z);
+    vec2 z3  = cMul(z2, z);
+    vec2 num = z3 + 3.0*cMul(cm1, z) + p12;
+    vec2 den = 3.0*z2 + 3.0*cMul(cm2, z) + p12 + vec2(1.0, 0.0);
+    if (dot(den, den) < 1e-10) break;
+    z = cSq(cDiv(num, den));
+    if (dot(z, z) > 10000.0) {
+      return smoothCount(i, vec2(z.x, 0.0), vec2(z.y, 0.0)) / float(u_maxIterations);
+    }
+  }
+  return 1.0;
+}
+
+// ── Phoenix: z_{n+1} = z_n² + Re(c) + p·z_{n−1},  z₀=(0,0),  z_{−1}=(0,0) ─
+// The "memory" term p·z_{prev} stretches the set into ornate feather/wing shapes.
+// p = −0.5 is the classic choice; the pixel is c (Mandelbrot-style parameter plane).
+float phoenix(vec2 c) {
+  vec2  z     = vec2(0.0);
+  vec2  zprev = vec2(0.0);
+  float p     = -0.5;          // phoenix wing-spread parameter
+  for (int i = 0; i < u_maxIterations; i++) {
+    vec2 znext = vec2(z.x*z.x - z.y*z.y + c.x + p*zprev.x,
+                      2.0*z.x*z.y        + c.y + p*zprev.y);
+    zprev = z;
+    z     = znext;
+    if (dot(z, z) > 4.0) {
+      return smoothCount(i, vec2(z.x, 0.0), vec2(z.y, 0.0)) / float(u_maxIterations);
+    }
+  }
+  return 1.0;
+}
+
+// ── Celtic variant: z ← |Re(z²)| + i·Im(z²) + c  ───────────────────────────
+// Identical to Mandelbrot except the real part of z² is reflected to positive.
+// This extra fold creates sea-horse tails that curl outward and a flame-like
+// boundary texture not seen in the standard Mandelbrot.
+// Uses dd precision (same as Mandelbrot) for deep-zoom capability.
+float celtic(vec2 c_re, vec2 c_im) {
+  vec2 z_re = vec2(0.0);
+  vec2 z_im = vec2(0.0);
+  for (int i = 0; i < u_maxIterations; i++) {
+    vec2 re2   = ddSub(ddMul(z_re, z_re), ddMul(z_im, z_im));
+    vec2 cross = ddMul(z_re, z_im);
+    // Celtic twist: |Re(z²)| — negate the dd pair when its hi-part is negative
+    if (re2.x < 0.0) re2 = -re2;
+    z_re = ddAdd(re2,           c_re);
+    z_im = ddAdd(ddMul2(cross), c_im);
+    if (z_re.x*z_re.x + z_im.x*z_im.x > 4.0) {
+      return smoothCount(i, z_re, z_im) / float(u_maxIterations);
+    }
+  }
+  return 1.0;
+}
+
+// ── Transcendental: z_{n+1} = sin(z_n) + c,  z₀ = 0 ────────────────────────
+// sin(a+bi) = sin(a)·cosh(b) + i·cos(a)·sinh(b).
+// Produces periodic "bubble galaxy" patterns — the filled set repeats with
+// period 2π along the real axis and widens into teardrop lobes. Escape at |z|>10.
+float sinMap(vec2 c) {
+  vec2 z = vec2(0.0);
+  for (int i = 0; i < u_maxIterations; i++) {
+    z = vec2(sin(z.x)*cosh(z.y), cos(z.x)*sinh(z.y)) + c;
+    if (dot(z, z) > 100.0) {
+      return float(i) / float(u_maxIterations);
+    }
+  }
+  return 1.0;
+}
+
+// ── Transcendental: z_{n+1} = eᶻⁿ + c,  z₀ = 0 ─────────────────────────────
+// e^(a+bi) = e^a·(cos(b) + i·sin(b)).
+// The "explosion" fractal: infinite parallel fingers radiating from a crescent-
+// shaped boundary. Escapes when Re(z) becomes large (exponential blowup) or
+// |z|² > 1000. Input clamped to prevent GPU float overflow.
+float expMap(vec2 c) {
+  vec2 z = vec2(0.0);
+  for (int i = 0; i < u_maxIterations; i++) {
+    float er = exp(clamp(z.x, -10.0, 20.0));   // clamp prevents fp overflow
+    z = vec2(er*cos(z.y), er*sin(z.y)) + c;
+    if (z.x > 20.0 || dot(z, z) > 1000.0) {
+      return float(i) / float(u_maxIterations);
+    }
+  }
+  return 1.0;
+}
+
+// ── Rational map: z_{n+1} = z_n² + c + λ/z_n²  (λ = 0.25) ─────────────────
+// The 1/z² term (the "Blaschke perturbation") creates copies of the Julia set
+// around the origin separated by an annular "McMullen domain". z₀ = (0.5,0)
+// avoids the pole. Escape at |z|² > 100.
+float rational(vec2 c) {
+  float lambda = 0.25;
+  vec2 z = vec2(0.5, 0.0);        // offset start avoids pole at origin
+  for (int i = 0; i < u_maxIterations; i++) {
+    vec2  z2  = cSq(z);
+    float d2  = dot(z2, z2);
+    if (d2 < 1e-10) break;        // near pole, abort
+    vec2 zinv2 = vec2(z2.x, -z2.y) / d2;   // 1/z² = conj(z²)/|z²|²
+    z = z2 + c + lambda * zinv2;
+    if (dot(z, z) > 100.0) {
+      return float(i) / float(u_maxIterations);
+    }
+  }
+  return 1.0;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -553,10 +702,21 @@ void main() {
   } else {
     float t;
     if      (u_fractalType == 0) t = mandelbrot(c_re, c_im);
-    else if (u_fractalType == 1) t = julia(c_re, c_im);   // z₀ = pixel dd, c = juliaC
+    else if (u_fractalType == 1) t = julia(c_re, c_im);        // z₀ = pixel dd, c = juliaC
     else if (u_fractalType == 2) t = burningShip(c_re, c_im);
     else if (u_fractalType == 4) t = tricorn(c_re, c_im);
-    else                         t = custom(c_re, c_im);
+    else if (u_fractalType == 5) t = custom(c_re, c_im);
+    else if (u_fractalType == 9) t = celtic(c_re, c_im);       // dd precision
+    else {
+      // Float32 fractals — extract hi-part of the dd pixel coordinate
+      vec2 c = vec2(c_re.x, c_im.x);
+      if      (u_fractalType == 6)  t = magnetI(c);
+      else if (u_fractalType == 7)  t = magnetII(c);
+      else if (u_fractalType == 8)  t = phoenix(c);
+      else if (u_fractalType == 10) t = sinMap(c);
+      else if (u_fractalType == 11) t = expMap(c);
+      else                          t = rational(c);            // type 12
+    }
     fragColor = vec4(applyColorScheme(t), 1.0);
   }
 }

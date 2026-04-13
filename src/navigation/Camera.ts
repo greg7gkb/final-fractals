@@ -32,8 +32,22 @@ const DEFAULT_VIEWS: Camera[] = [
   { centerRe: 0.0,    centerIm: 0.0,    zoom: 3.0,  rotation: 0 },
   // 4 — Tricorn: full view
   { centerRe: -0.25,  centerIm: 0.0,    zoom: 3.2,  rotation: 0 },
-  // 5 — Custom
+  // 5 — Custom (Multibrot n=3)
   { centerRe: 0.0,    centerIm: 0.0,    zoom: 3.0,  rotation: 0 },
+  // 6 — Magnet I: main body spans roughly ±3 on Re and Im
+  { centerRe: 1.0,    centerIm: 0.0,    zoom: 6.0,  rotation: 0 },
+  // 7 — Magnet II: cubic map is slightly wider
+  { centerRe: 0.0,    centerIm: 0.0,    zoom: 7.0,  rotation: 0 },
+  // 8 — Phoenix: similar footprint to Mandelbrot, shifted slightly left
+  { centerRe: -0.5,   centerIm: 0.0,    zoom: 3.0,  rotation: 0 },
+  // 9 — Celtic: near-identical footprint to Mandelbrot
+  { centerRe: -0.5,   centerIm: 0.0,    zoom: 3.5,  rotation: 0 },
+  // 10 — sin(z)+c: interesting bubbles span Re ∈ [−π, π], Im ∈ [−3, 3]
+  { centerRe: 0.0,    centerIm: 0.0,    zoom: 10.0, rotation: 0 },
+  // 11 — e^z+c: fan structure sits left of the imaginary axis
+  { centerRe: -1.5,   centerIm: 0.0,    zoom: 8.0,  rotation: 0 },
+  // 12 — Rational (λ/z²): McMullen-style ring around origin
+  { centerRe: 0.0,    centerIm: 0.0,    zoom: 4.0,  rotation: 0 },
 ];
 
 export function defaultCamera(fractalType: number): Camera {
