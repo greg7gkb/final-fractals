@@ -104,13 +104,17 @@
 // the GPU driver / compiler — no parallel reimplementation.
 // ─────────────────────────────────────────────────────────────────────────────
 export const DD_PRIMITIVES_GLSL = /* glsl */ `
-// Bit-launder a float: semantically a no-op uint↔float round-trip, but the
-// GLSL→native compiler can't algebraically simplify expressions across the
-// bitcast. ANGLE's Metal backend on macOS aggressively rewrites \`x - (x - y)\`
-// to \`y\` (and similar TwoSum/TwoProd patterns) to 0, which silently kills
-// dd. Bitcasts compile to zero machine code on every modern GPU, so the
-// runtime cost is just the math we're forcing the compiler to actually run.
-float launder(float x) { return uintBitsToFloat(floatBitsToUint(x)); }
+// Anti-optimisation salt. JS uploads 0; the compiler can't know that at
+// compile time, so it can't constant-fold the XOR away. The launder() call
+// becomes a real (but runtime-trivial) operation on the bit pattern, which
+// prevents the GLSL→native backend from reassociating expressions across
+// it. ANGLE's Metal backend on macOS sees through a pure uint↔float
+// no-op bitcast; this salt defeats that. Cost per launder: 1 XOR.
+uniform highp uint u_ddSalt;
+
+float launder(float x) {
+  return uintBitsToFloat(floatBitsToUint(x) ^ u_ddSalt);
+}
 
 // TwoSum: error-free addition of two float32 values.
 // Returns (s, e) such that fl(a+b)=s and s+e=a+b exactly.

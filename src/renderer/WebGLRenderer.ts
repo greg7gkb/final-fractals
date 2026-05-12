@@ -91,6 +91,12 @@ export class WebGLRenderer {
     this.uJuliaC        = loc('u_juliaC');
     this.uColorScheme   = loc('u_colorScheme');
 
+    // dd anti-optimisation salt — set once to 0. The compiler doesn't know
+    // the runtime value, so it can't constant-fold launder() in the dd
+    // primitives. See DD_PRIMITIVES_GLSL for full rationale.
+    gl.useProgram(this.program);
+    gl.uniform1ui(loc('u_ddSalt'), 0);
+
     // ── 4. Empty VAO ──────────────────────────────────────────────────
     const vao = gl.createVertexArray();
     if (!vao) throw new Error('Failed to create VAO');

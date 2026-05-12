@@ -273,10 +273,12 @@ export function validateDD(): ValidationResult {
   }
   gl.viewport(0, 0, 1, 1);
 
-  const uOp = gl.getUniformLocation(program, 'u_op');
-  const uA  = gl.getUniformLocation(program, 'u_a');
-  const uB  = gl.getUniformLocation(program, 'u_b');
-  const uS  = gl.getUniformLocation(program, 'u_s');
+  const uOp   = gl.getUniformLocation(program, 'u_op');
+  const uA    = gl.getUniformLocation(program, 'u_a');
+  const uB    = gl.getUniformLocation(program, 'u_b');
+  const uS    = gl.getUniformLocation(program, 'u_s');
+  const uSalt = gl.getUniformLocation(program, 'u_ddSalt');
+  if (uSalt) gl.uniform1ui(uSalt, 0);
 
   const buf = new Float32Array(4);
   const results: TestResult[] = [];
