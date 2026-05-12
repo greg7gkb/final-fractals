@@ -98,6 +98,79 @@
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DD PRIMITIVES — shared between the main fragment shader and the runtime
+// validator (`src/dd/validate.ts`). Extracted as a separate string so the
+// validator exercises the exact same GLSL the shipping shader runs through
+// the GPU driver / compiler — no parallel reimplementation.
+// ─────────────────────────────────────────────────────────────────────────────
+export const DD_PRIMITIVES_GLSL = /* glsl */ `
+// TwoSum: error-free addition of two float32 values.
+// Returns (s, e) such that fl(a+b)=s and s+e=a+b exactly.
+// Reference: Knuth, TAOCP vol.2, Theorem B.
+vec2 twoSum(float a, float b) {
+  float s = a + b;
+  float v = s - a;
+  // e captures the parts of a and b lost in the rounding of a+b
+  float e = (a - (s - v)) + (b - v);
+  return vec2(s, e);
+}
+
+// Veltkamp split: split a float32 into two non-overlapping 12-bit halves.
+// Factor 4097 = 2^12+1 pushes the lower 12 bits into a separate value.
+// Required by TwoProd when hardware FMA is unavailable (WebGL2 doesn't guarantee FMA).
+vec2 splitF(float a) {
+  float t  = 4097.0 * a;
+  float hi = t - (t - a);   // upper 12 bits of mantissa
+  return vec2(hi, a - hi);  // lo = exact remainder
+}
+
+// TwoProd: error-free product of two float32 values.
+// Returns (p, e) such that fl(a*b)=p and p+e=a*b exactly.
+// Uses Dekker's method via Veltkamp splitting.
+vec2 twoProd(float a, float b) {
+  float p  = a * b;
+  vec2  as = splitF(a);
+  vec2  bs = splitF(b);
+  // Reconstruct exact error: p + err = a*b  (all float32 ops are exact here)
+  float e  = ((as.x*bs.x - p) + as.x*bs.y + as.y*bs.x) + as.y*bs.y;
+  return vec2(p, e);
+}
+
+// dd + dd  (Priest 1991, Algorithm 5)
+vec2 ddAdd(vec2 a, vec2 b) {
+  vec2 s = twoSum(a.x, b.x);
+  s.y += a.y + b.y;          // absorb low-order parts into error
+  return twoSum(s.x, s.y);   // renormalise
+}
+
+// dd - dd
+vec2 ddSub(vec2 a, vec2 b) {
+  return ddAdd(a, vec2(-b.x, -b.y));
+}
+
+// dd + float  (adding a regular float to a dd number)
+vec2 ddAddF(vec2 a, float b) {
+  vec2 s = twoSum(a.x, b);
+  s.y += a.y;
+  return twoSum(s.x, s.y);
+}
+
+// dd * dd  (Dekker 1971)
+// The a.y*b.y term is O(eps²) and safely dropped.
+vec2 ddMul(vec2 a, vec2 b) {
+  vec2 p = twoProd(a.x, b.x);           // exact product of leading terms
+  p.y += a.x*b.y + a.y*b.x;            // first-order cross terms
+  return twoSum(p.x, p.y);             // renormalise
+}
+
+// Multiply a dd number by the exact float 2.0
+// (Since 2 is a power of two, this introduces zero rounding error.)
+vec2 ddMul2(vec2 a) {
+  return vec2(2.0*a.x, 2.0*a.y);
+}
+`;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // VERTEX SHADER
 // ─────────────────────────────────────────────────────────────────────────────
 // The "big triangle" trick: 3 hard-coded vertices form a triangle that covers
@@ -146,74 +219,11 @@ out vec4 fragColor;
 // ═══════════════════════════════════════════════════════════════════════════
 // DOUBLE-DOUBLE ARITHMETIC
 // ═══════════════════════════════════════════════════════════════════════════
-//
-// A dd number is vec2(hi, lo) with |lo| ≤ ½·ulp(hi).
-// All operations below are exact up to dd precision (~15 decimal digits).
+// All operations are defined in DD_PRIMITIVES_GLSL above so the runtime
+// validator can compile the same source into a test shader. See the block
+// above for details (TwoSum, Veltkamp split, TwoProd, ddAdd/Sub/Mul/AddF/Mul2).
 
-// TwoSum: error-free addition of two float32 values.
-// Returns (s, e) such that fl(a+b)=s and s+e=a+b exactly.
-// Reference: Knuth, TAOCP vol.2, Theorem B.
-vec2 twoSum(float a, float b) {
-  float s = a + b;
-  float v = s - a;
-  // e captures the parts of a and b lost in the rounding of a+b
-  float e = (a - (s - v)) + (b - v);
-  return vec2(s, e);
-}
-
-// Veltkamp split: split a float32 into two non-overlapping 12-bit halves.
-// Factor 4097 = 2^12+1 pushes the lower 12 bits into a separate value.
-// Required by TwoProd when hardware FMA is unavailable (WebGL2 doesn't guarantee FMA).
-vec2 split(float a) {
-  float t  = 4097.0 * a;
-  float hi = t - (t - a);   // upper 12 bits of mantissa
-  return vec2(hi, a - hi);  // lo = exact remainder
-}
-
-// TwoProd: error-free product of two float32 values.
-// Returns (p, e) such that fl(a*b)=p and p+e=a*b exactly.
-// Uses Dekker's method via Veltkamp splitting.
-vec2 twoProd(float a, float b) {
-  float p  = a * b;
-  vec2  as = split(a);
-  vec2  bs = split(b);
-  // Reconstruct exact error: p + err = a*b  (all float32 ops are exact here)
-  float e  = ((as.x*bs.x - p) + as.x*bs.y + as.y*bs.x) + as.y*bs.y;
-  return vec2(p, e);
-}
-
-// dd + dd  (Priest 1991, Algorithm 5)
-vec2 ddAdd(vec2 a, vec2 b) {
-  vec2 s = twoSum(a.x, b.x);
-  s.y += a.y + b.y;          // absorb low-order parts into error
-  return twoSum(s.x, s.y);   // renormalise
-}
-
-// dd - dd
-vec2 ddSub(vec2 a, vec2 b) {
-  return ddAdd(a, vec2(-b.x, -b.y));
-}
-
-// dd + float  (adding a regular float to a dd number)
-vec2 ddAddF(vec2 a, float b) {
-  vec2 s = twoSum(a.x, b);
-  s.y += a.y;
-  return twoSum(s.x, s.y);
-}
-
-// dd * dd  (Dekker 1971)
-// The a.y*b.y term is O(eps²) and safely dropped.
-vec2 ddMul(vec2 a, vec2 b) {
-  vec2 p = twoProd(a.x, b.x);           // exact product of leading terms
-  p.y += a.x*b.y + a.y*b.x;            // first-order cross terms
-  return twoSum(p.x, p.y);             // renormalise
-}
-
-// Multiply a dd number by the exact float 2.0
-// (Since 2 is a power of two, this introduces zero rounding error.)
-vec2 ddMul2(vec2 a) {
-  return vec2(2.0*a.x, 2.0*a.y);
-}
+${DD_PRIMITIVES_GLSL}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COORDINATE TRANSFORM  (screen pixel → dd complex number)
