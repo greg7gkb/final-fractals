@@ -104,35 +104,49 @@
 // the GPU driver / compiler — no parallel reimplementation.
 // ─────────────────────────────────────────────────────────────────────────────
 export const DD_PRIMITIVES_GLSL = /* glsl */ `
+// Bit-launder a float: semantically a no-op uint↔float round-trip, but the
+// GLSL→native compiler can't algebraically simplify expressions across the
+// bitcast. ANGLE's Metal backend on macOS aggressively rewrites \`x - (x - y)\`
+// to \`y\` (and similar TwoSum/TwoProd patterns) to 0, which silently kills
+// dd. Bitcasts compile to zero machine code on every modern GPU, so the
+// runtime cost is just the math we're forcing the compiler to actually run.
+float launder(float x) { return uintBitsToFloat(floatBitsToUint(x)); }
+
 // TwoSum: error-free addition of two float32 values.
 // Returns (s, e) such that fl(a+b)=s and s+e=a+b exactly.
 // Reference: Knuth, TAOCP vol.2, Theorem B.
 vec2 twoSum(float a, float b) {
-  float s = a + b;
-  float v = s - a;
-  // e captures the parts of a and b lost in the rounding of a+b
-  float e = (a - (s - v)) + (b - v);
+  float s  = a + b;
+  float v  = launder(s - a);
+  float sv = launder(s - v);
+  float bv = launder(b - v);
+  float e  = (a - sv) + bv;
   return vec2(s, e);
 }
 
-// Veltkamp split: split a float32 into two non-overlapping 12-bit halves.
-// Factor 4097 = 2^12+1 pushes the lower 12 bits into a separate value.
-// Required by TwoProd when hardware FMA is unavailable (WebGL2 doesn't guarantee FMA).
+// 12-bit float32 split. Zero the bottom 12 mantissa bits with a bit mask;
+// hi has 12 mantissa bits (11 explicit + 1 implicit), lo is the exact
+// remainder (Sterbenz: |a - hi| ≤ |a|/2, so the subtraction is exact).
+// Simpler and slightly faster than the classical t - (t - a) Veltkamp
+// identity, and immune to algebraic reassociation.
 vec2 splitF(float a) {
-  float t  = 4097.0 * a;
-  float hi = t - (t - a);   // upper 12 bits of mantissa
-  return vec2(hi, a - hi);  // lo = exact remainder
+  float hi = uintBitsToFloat(floatBitsToUint(a) & 0xFFFFF000u);
+  return vec2(hi, a - hi);
 }
 
 // TwoProd: error-free product of two float32 values.
 // Returns (p, e) such that fl(a*b)=p and p+e=a*b exactly.
-// Uses Dekker's method via Veltkamp splitting.
+// Each cross-term product is exact (12-bit × 12-bit fits in 24 bits =
+// float32 mantissa width), and launder() keeps the running sum from
+// being algebraically merged with p = a*b.
 vec2 twoProd(float a, float b) {
   float p  = a * b;
   vec2  as = splitF(a);
   vec2  bs = splitF(b);
-  // Reconstruct exact error: p + err = a*b  (all float32 ops are exact here)
-  float e  = ((as.x*bs.x - p) + as.x*bs.y + as.y*bs.x) + as.y*bs.y;
+  float t1 = launder(as.x*bs.x - p);
+  float t2 = launder(t1 + as.x*bs.y);
+  float t3 = launder(t2 + as.y*bs.x);
+  float e  = t3 + as.y*bs.y;
   return vec2(p, e);
 }
 

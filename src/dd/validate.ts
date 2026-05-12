@@ -28,9 +28,13 @@ function _twoSum(a: number, b: number): [number, number] {
   return [s, e];
 }
 
+// Bit-mask split — mirrors the GLSL splitF: zero the bottom 12 mantissa bits.
+const _u32buf = new Uint32Array(1);
+const _f32buf = new Float32Array(_u32buf.buffer);
 function _split(a: number): [number, number] {
-  const t  = f32(4097.0 * a);
-  const hi = f32(t - f32(t - a));
+  _f32buf[0] = a;
+  _u32buf[0] &= 0xFFFFF000;
+  const hi = _f32buf[0];
   return [hi, f32(a - hi)];
 }
 
