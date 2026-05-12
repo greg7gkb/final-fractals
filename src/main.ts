@@ -16,16 +16,19 @@ import { defaultCamera } from './navigation/Camera.js';
 import { InputHandler } from './navigation/InputHandler.js';
 import { Controls } from './ui/Controls.js';
 import { GridOverlay } from './ui/GridOverlay.js';
-import { validateDD } from './dd/validate.js';
+import { validateDD, formatResults } from './dd/validate.js';
 import { renderDiagPanel } from './dd/diagPanel.js';
 
 // ── DD validation ──────────────────────────────────────────────────────────
 // Runs once at startup to verify the shipping dd primitives actually preserve
-// the lo component on this GPU/driver. If the result returns lo=0 where the
-// CPU reference says lo≠0, the dd machinery has been silently optimised away.
+// the lo component on this GPU/driver. Always prints a paste-friendly summary
+// to the console so failures (and successes on other drivers) can be reported.
 const ddValidation = validateDD();
-if (!ddValidation.allPassed) {
-  console.warn('[final-fractals] dd validation failed — dd primitives are not preserving precision on this driver. Deep zoom will degrade to f32. Append ?diag to the URL for details.', ddValidation);
+const ddSummary = formatResults(ddValidation);
+if (ddValidation.allPassed) {
+  console.log(ddSummary);
+} else {
+  console.warn(ddSummary);
   document.getElementById('dd-broken-chip')?.classList.remove('hidden');
 }
 if (new URLSearchParams(location.search).has('diag')) {

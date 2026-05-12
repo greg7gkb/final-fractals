@@ -319,3 +319,42 @@ function compileShader(gl: WebGL2RenderingContext, type: GLenum, src: string): W
   }
   return sh;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Plain-text formatter — paste-friendly multi-line output for the console
+// ─────────────────────────────────────────────────────────────────────────────
+export function formatResults(result: ValidationResult): string {
+  const lines: string[] = [];
+
+  if (result.error) {
+    lines.push('=== DD validation: ERROR ===');
+    lines.push(result.error);
+    return lines.join('\n');
+  }
+
+  const total  = result.results.length;
+  const passed = result.results.filter(r => r.passed).length;
+  const ua     = typeof navigator !== 'undefined' ? navigator.userAgent : '(no navigator)';
+
+  lines.push(`=== DD validation: ${passed}/${total} passed ===`);
+  lines.push(`UA: ${ua}`);
+  lines.push('');
+
+  for (const r of result.results) {
+    const mark = r.passed ? 'PASS' : 'FAIL';
+    lines.push(`[${mark}] ${r.name}`);
+    lines.push(`       expected: hi=${fmt(r.expected[0])}  lo=${fmt(r.expected[1])}`);
+    lines.push(`       actual:   hi=${fmt(r.actual[0])}  lo=${fmt(r.actual[1])}`);
+    lines.push(`       why:      ${r.why}`);
+    lines.push('');
+  }
+
+  return lines.join('\n').trimEnd();
+}
+
+function fmt(n: number): string {
+  if (n === 0) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1e-3 && abs < 1e6) return n.toPrecision(8);
+  return n.toExponential(6);
+}
