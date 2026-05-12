@@ -17,7 +17,7 @@ import { InputHandler } from './navigation/InputHandler.js';
 import { Controls } from './ui/Controls.js';
 import { GridOverlay } from './ui/GridOverlay.js';
 import { validateDD, formatResults } from './dd/validate.js';
-import { renderDiagPanel } from './dd/diagPanel.js';
+import { renderDiagPanel, hideDiagPanel, isDiagPanelOpen } from './dd/diagPanel.js';
 
 // ── DD validation ──────────────────────────────────────────────────────────
 // Runs once at startup to verify the shipping dd primitives actually preserve
@@ -25,12 +25,54 @@ import { renderDiagPanel } from './dd/diagPanel.js';
 // to the console so failures (and successes on other drivers) can be reported.
 const ddValidation = validateDD();
 const ddSummary = formatResults(ddValidation);
-if (ddValidation.allPassed) {
-  console.log(ddSummary);
-} else {
-  console.warn(ddSummary);
-  document.getElementById('dd-broken-chip')?.classList.remove('hidden');
+if (ddValidation.allPassed) console.log(ddSummary);
+else                        console.warn(ddSummary);
+
+// Fractal types whose iteration loops actually use the dd primitives. The
+// other eight fractals drop to float32 internally (transcendentals, integer
+// roots, etc.) so showing "DD active" on them would be misleading. Mirrors
+// the per-row Precision column in README.md §Fractals.
+const DD_FRACTAL_TYPES = new Set<number>([
+  0,  // Mandelbrot
+  1,  // Julia
+  2,  // Burning Ship
+  4,  // Tricorn
+  9,  // Celtic
+]);
+
+const ddStatusEl = document.getElementById('dd-status') as HTMLAnchorElement | null;
+
+function updateDDIndicator(): void {
+  if (!ddStatusEl) return;
+  const usesDD  = DD_FRACTAL_TYPES.has(uniforms.fractalType);
+  const ddWorks = ddValidation.allPassed;
+  ddStatusEl.classList.remove('dd-on', 'dd-off', 'dd-na');
+
+  if (usesDD && ddWorks) {
+    ddStatusEl.textContent = 'DD';
+    ddStatusEl.classList.add('dd-on');
+    ddStatusEl.title = 'Double-double precision active for this fractal and verified on this GPU/driver. Click for validator details.';
+  } else if (usesDD && !ddWorks) {
+    ddStatusEl.textContent = 'f32';
+    ddStatusEl.classList.add('dd-off');
+    ddStatusEl.title = 'This fractal would normally use dd, but the GPU compiler has elided the dd primitives — currently falling back to f32. Click for per-primitive validator details.';
+  } else {
+    ddStatusEl.textContent = 'f32';
+    ddStatusEl.classList.add('dd-na');
+    ddStatusEl.title = ddWorks
+      ? 'This fractal uses single-precision arithmetic by design (transcendentals, integer roots, etc.). DD is verified working on this GPU for Mandelbrot, Julia, Burning Ship, Tricorn, and Celtic. Click for validator details.'
+      : 'This fractal uses single-precision arithmetic by design. (DD validation also failed on this GPU — see ?diag.) Click for validator details.';
+  }
 }
+
+if (ddStatusEl) {
+  ddStatusEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (isDiagPanelOpen()) hideDiagPanel();
+    else                   renderDiagPanel(ddValidation);
+  });
+}
+
 if (new URLSearchParams(location.search).has('diag')) {
   renderDiagPanel(ddValidation);
 }
@@ -140,6 +182,7 @@ const controls = new Controls(
   (type: number) => {
     camera = defaultCamera(type);
     inputHandler.setCamera(camera);
+    updateDDIndicator();
     dirty = true;
   },
   // onParamChange: just redraw
@@ -154,6 +197,9 @@ const controls = new Controls(
   () => requestCapture(),
 );
 
+// Initial indicator state (after uniforms exists and the DOM element is hooked up).
+updateDDIndicator();
+
 // ── Input handling ─────────────────────────────────────────────────────────
 
 const inputHandler = new InputHandler(
@@ -167,6 +213,7 @@ const inputHandler = new InputHandler(
     uniforms.fractalType = index;
     camera = defaultCamera(index);
     inputHandler.setCamera(camera);
+    updateDDIndicator();
     dirty = true;
   },
   // onUIToggle

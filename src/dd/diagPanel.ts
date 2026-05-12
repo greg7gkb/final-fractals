@@ -7,9 +7,22 @@
  */
 import type { ValidationResult } from './validate.js';
 
+const PANEL_ID = 'dd-diag-panel';
+
+export function isDiagPanelOpen(): boolean {
+  return !!document.getElementById(PANEL_ID);
+}
+
+export function hideDiagPanel(): void {
+  document.getElementById(PANEL_ID)?.remove();
+}
+
 export function renderDiagPanel(result: ValidationResult): void {
+  // If already open, leave it — caller should toggle via hideDiagPanel.
+  if (isDiagPanelOpen()) return;
+
   const panel = document.createElement('div');
-  panel.id = 'dd-diag-panel';
+  panel.id = PANEL_ID;
   panel.style.cssText = `
     position: fixed;
     top: 16px;
@@ -30,8 +43,31 @@ export function renderDiagPanel(result: ValidationResult): void {
     z-index: 100;
   `;
 
+  // Close (×) — top-right corner. Calls hideDiagPanel() on click.
+  const close = document.createElement('button');
+  close.textContent = '×';
+  close.setAttribute('aria-label', 'Close diagnostic panel');
+  close.style.cssText = `
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+  `;
+  close.addEventListener('mouseenter', () => { close.style.color = '#fff'; close.style.background = 'rgba(255,255,255,0.08)'; });
+  close.addEventListener('mouseleave', () => { close.style.color = '#888'; close.style.background = 'transparent'; });
+  close.addEventListener('click', hideDiagPanel);
+  panel.appendChild(close);
+
   const header = document.createElement('div');
-  header.style.cssText = 'font-size: 13px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;';
+  header.style.cssText = 'font-size: 13px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; padding-right: 24px;';
   if (result.error) {
     header.innerHTML = `<span style="color:#ff8080;">⚠</span> DD validator could not run`;
   } else {
