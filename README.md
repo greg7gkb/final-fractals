@@ -2,7 +2,7 @@
 
 An interactive fractal explorer that runs in the browser — no install, no plugins, just WebGL2.
 
-Pan, zoom, and rotate through thirteen fractal sets in real time. Rendering is done entirely on the GPU via WebGL2 fragment shaders. The five classical escape-time sets (Mandelbrot, Julia, Burning Ship, Tricorn, Celtic) use double-double arithmetic for deep-zoom precision down to ~10⁻¹⁴; the other eight use single-precision float32 (~10⁻⁵ before pixelation).
+Pan, zoom, and rotate through thirteen fractal sets in real time. Rendering is done entirely on the GPU via WebGL2 fragment shaders. The five classical escape-time sets (Mandelbrot, Julia, Burning Ship, Tricorn, Celtic) use double-double arithmetic; the other eight use single-precision float32. In practice both modes are limited less by raw representation than by escape-time iteration amplifying error every step — see [Double-double precision](#double-double-precision) for the actual zoom ceilings.
 
 **[Live demo →](https://greg7gkb.github.io/final-fractals/)**
 
@@ -12,7 +12,7 @@ Pan, zoom, and rotate through thirteen fractal sets in real time. Rendering is d
 
 ## Fractals
 
-The **Precision** column shows which arithmetic the iteration loop uses on the GPU: **dd** (double-double, ~10⁻¹⁴ zoom) or **f32** (single-precision, ~10⁻⁵ zoom before pixelation).
+The **Precision** column shows which arithmetic the iteration loop uses on the GPU: **dd** (double-double, ~15-digit representation) or **f32** (single-precision, ~7-digit representation). Iteration amplifies error roughly 2× per step near the set boundary, so the *visible* zoom ceiling is well short of either representation limit (see below).
 
 | # | Name | Formula | Precision | Notes |
 |---|------|---------|-----------|-------|
@@ -106,7 +106,18 @@ pixel (x, y)
 
 ### Double-double precision
 
-GPU shaders use 32-bit floats (~7 significant digits). At deep zoom, adjacent pixels become indistinguishable and the image degrades into blocky rectangles. To reach ~10⁻¹⁴ zoom depth, Mandelbrot, Julia, Burning Ship, Tricorn, and Celtic use *double-double* arithmetic: every value is represented as a pair of floats `(hi, lo)` where `hi + lo` holds ~15 significant digits. The extra precision costs roughly 4–8× more GPU work per pixel but allows exploration far beyond what single precision permits.
+GPU shaders use 32-bit floats (~7 significant digits). At deep zoom, adjacent pixels become indistinguishable and the image degrades into blocky rectangles. To extend the representable depth, Mandelbrot, Julia, Burning Ship, Tricorn, and Celtic use *double-double* arithmetic: every value is a pair of float32s `(hi, lo)` where `hi + lo` holds ~15 significant digits — about the same as a float64. The extra precision costs roughly 4–8× more GPU work per pixel.
+
+**The catch: iteration amplifies error.** The escape-time map `z ← z² + c` is dynamical, so a tiny perturbation in `c` gets multiplied by ~|2z| every step. Near the set boundary `|z|` hovers around 1–2, so error roughly doubles each iteration. After ~50 boundary-region iterations dd's 15-digit budget is exhausted, regardless of the static representation depth. The practical clean-zoom ceilings are therefore much lower than the per-number precision suggests:
+
+| Mode | Static representation | Clean zoom (near boundary) |
+|---|---|---|
+| **f32** | ~7 digits, ~10⁷ static depth | **~10⁴–10⁵×** before pixelation |
+| **dd**  | ~15 digits, ~10¹⁴ static depth | **~10⁵–10⁶×** before iteration noise; somewhat deeper in calmer regions |
+
+Cranking the iteration slider doesn't help once the noise starts — adjacent pixels still escape at well-defined counts, the counts just diverge wildly because the iteration has amplified their tiny `c` difference. The image goes from "fractal" to rainbow confetti.
+
+To actually exercise dd's ~10¹⁴ depth you'd need **perturbation theory**: compute one reference orbit at high precision once, then iterate low-precision *deltas* around it. The deltas stay small, so error compounds slowly. That's how dedicated deep-zoom tools (Kalles Fractaler, Fractal eXtreme) reach 10¹⁰⁰⁰⁺ zoom. Not currently implemented here.
 
 ### Escape-time colouring
 
