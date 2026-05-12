@@ -119,12 +119,20 @@ float launder(float x) {
 // TwoSum: error-free addition of two float32 values.
 // Returns (s, e) such that fl(a+b)=s and s+e=a+b exactly.
 // Reference: Knuth, TAOCP vol.2, Theorem B.
+//
+// Every intermediate is laundered: without the explicit launder on a_sv,
+// ANGLE/Metal reassociates the final  (a - sv) + bv  to  a + (bv - sv),
+// which collapses to 0 in float32 when |b| ≪ ulp(a). Forcing the partial
+// to commit through a bitcast blocks the rewrite. (Contrast TwoProd's
+// final  t3 + as.y*bs.y , which has only two operands — nothing to
+// reassociate against — and so doesn't need this extra launder.)
 vec2 twoSum(float a, float b) {
-  float s  = a + b;
-  float v  = launder(s - a);
-  float sv = launder(s - v);
-  float bv = launder(b - v);
-  float e  = (a - sv) + bv;
+  float s    = a + b;
+  float v    = launder(s - a);
+  float sv   = launder(s - v);
+  float bv   = launder(b - v);
+  float a_sv = launder(a - sv);
+  float e    = a_sv + bv;
   return vec2(s, e);
 }
 
