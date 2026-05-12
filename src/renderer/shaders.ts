@@ -120,14 +120,14 @@ float launder(float x) {
 // Returns (s, e) such that fl(a+b)=s and s+e=a+b exactly.
 // Reference: Knuth, TAOCP vol.2, Theorem B.
 //
-// Every intermediate is laundered: without the explicit launder on a_sv,
-// ANGLE/Metal reassociates the final  (a - sv) + bv  to  a + (bv - sv),
-// which collapses to 0 in float32 when |b| ≪ ulp(a). Forcing the partial
-// to commit through a bitcast blocks the rewrite. (Contrast TwoProd's
-// final  t3 + as.y*bs.y , which has only two operands — nothing to
-// reassociate against — and so doesn't need this extra launder.)
+// EVERY intermediate must be laundered, including s itself. Without
+// laundering s, ANGLE/Metal substitutes s = a + b back into the expression
+// for v: launder(s - a)  becomes  launder((a + b) - a)  which the symbolic
+// optimiser folds to  launder(b)  — wrong in float32 when |b| ≪ ulp(a),
+// because (a+b)-a actually rounds to 0, not b. Laundering s blocks the
+// substitution at the source.
 vec2 twoSum(float a, float b) {
-  float s    = a + b;
+  float s    = launder(a + b);
   float v    = launder(s - a);
   float sv   = launder(s - v);
   float bv   = launder(b - v);
