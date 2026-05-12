@@ -145,6 +145,13 @@ WebGL2 is supported by all modern browsers (Chrome 56+, Firefox 51+, Safari 15+,
 
 ---
 
+## Roadmap
+
+- **WebGPU migration** — planned. See [docs/MIGRATION_WEBGPU.md](docs/MIGRATION_WEBGPU.md). WGSL's strict IEEE-754 semantics would let us drop the `launder()` workaround entirely and unlock compute shaders (prerequisite for perturbation theory).
+- **Perturbation theory** — the only path past dd's ~10⁵–10⁶× practical zoom ceiling. Depends on the WebGPU migration above.
+
+---
+
 ## License
 
 MIT — do whatever you like with it.
