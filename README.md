@@ -2,7 +2,7 @@
 
 An interactive fractal explorer that runs in the browser — no install, no plugins, just WebGL2.
 
-Pan, zoom, and rotate through thirteen fractal sets in real time. Rendering is done entirely on the GPU via WebGL2 fragment shaders, with double-double arithmetic for deep-zoom precision down to ~10⁻¹⁴.
+Pan, zoom, and rotate through thirteen fractal sets in real time. Rendering is done entirely on the GPU via WebGL2 fragment shaders. The five classical escape-time sets (Mandelbrot, Julia, Burning Ship, Tricorn, Celtic) use double-double arithmetic for deep-zoom precision down to ~10⁻¹⁴; the other eight use single-precision float32 (~10⁻⁵ before pixelation).
 
 **[Live demo →](https://greg7gkb.github.io/final-fractals/)**
 
@@ -12,21 +12,23 @@ Pan, zoom, and rotate through thirteen fractal sets in real time. Rendering is d
 
 ## Fractals
 
-| # | Name | Formula | Notes |
-|---|------|---------|-------|
-| 0 | **Mandelbrot** | z ← z² + c,  z₀ = 0 | The classic. c is the pixel. Full dd precision. |
-| 1 | **Julia Set** | z ← z² + c,  z₀ = pixel | c is a user constant — pick from presets or type your own. Full dd precision. |
-| 2 | **Burning Ship** | z ← (\|Re(z)\| + \|Im(z)\|·i)² + c | Absolute values before squaring "fold" the plane into a ship silhouette. |
-| 3 | **Newton** | z ← (2z³ + 1) / (3z²) | Colours by which root of z³ = 1 the iteration converges to. |
-| 4 | **Tricorn** | z ← conj(z)² + c | Conjugating before squaring breaks analytic symmetry, giving a 3-fold cactus shape. |
-| 5 | **Custom** | z ← zⁿ + c,  n = 3 | De Moivre Multibrot — edit the shader to change the exponent. |
-| 6 | **Magnet I** | z ← ((z²+c−1)/(2z+c−2))² | Rational map from renormalisation theory; bulbous Mandelbrot-like chains. |
-| 7 | **Magnet II** | cubic rational analogue of Magnet I | Three root branches produce richer nested-spiral decorations. |
-| 8 | **Phoenix** | z ← z²+c + p·z_prev,  p=−0.5 | Memory term stretches the set into feather/wing shapes. |
-| 9 | **Celtic** | z ← \|Re(z²)\| + i·Im(z²) + c | Mandelbrot with real axis folded — sea-horse tails curl outward. Full dd precision. |
-| 10 | **sin(z) + c** | z ← sin(z) + c | Periodic bubble-galaxy patterns repeating every 2π on the real axis. |
-| 11 | **eᶻ + c** | z ← eᶻ + c | "Explosion" fractal — infinite parallel fingers from a crescent boundary. |
-| 12 | **Rational (λ/z²)** | z ← z²+c+0.25/z² | McMullen-domain ring structure around the origin. |
+The **Precision** column shows which arithmetic the iteration loop uses on the GPU: **dd** (double-double, ~10⁻¹⁴ zoom) or **f32** (single-precision, ~10⁻⁵ zoom before pixelation).
+
+| # | Name | Formula | Precision | Notes |
+|---|------|---------|-----------|-------|
+| 0 | **Mandelbrot** | z ← z² + c,  z₀ = 0 | dd | The classic. c is the pixel. |
+| 1 | **Julia Set** | z ← z² + c,  z₀ = pixel | dd | c is a user constant — pick from presets or type your own. |
+| 2 | **Burning Ship** | z ← (\|Re(z)\| + \|Im(z)\|·i)² + c | dd | Absolute values before squaring "fold" the plane into a ship silhouette. |
+| 3 | **Newton** | z ← (2z³ + 1) / (3z²) | f32 | Colours by which root of z³ = 1 the iteration converges to. |
+| 4 | **Tricorn** | z ← conj(z)² + c | dd | Conjugating before squaring breaks analytic symmetry, giving a 3-fold cactus shape. |
+| 5 | **Custom** | z ← zⁿ + c,  n = 3 | f32 | De Moivre Multibrot — edit the shader to change the exponent. |
+| 6 | **Magnet I** | z ← ((z²+c−1)/(2z+c−2))² | f32 | Rational map from renormalisation theory; bulbous Mandelbrot-like chains. |
+| 7 | **Magnet II** | cubic rational analogue of Magnet I | f32 | Three root branches produce richer nested-spiral decorations. |
+| 8 | **Phoenix** | z ← z²+c + p·z_prev,  p=−0.5 | f32 | Memory term stretches the set into feather/wing shapes. |
+| 9 | **Celtic** | z ← \|Re(z²)\| + i·Im(z²) + c | dd | Mandelbrot with real axis folded — sea-horse tails curl outward. |
+| 10 | **sin(z) + c** | z ← sin(z) + c | f32 | Periodic bubble-galaxy patterns repeating every 2π on the real axis. |
+| 11 | **eᶻ + c** | z ← eᶻ + c | f32 | "Explosion" fractal — infinite parallel fingers from a crescent boundary. |
+| 12 | **Rational (λ/z²)** | z ← z²+c+0.25/z² | f32 | McMullen-domain ring structure around the origin. |
 
 The Julia Set panel includes a preset picker (Douady's Rabbit, San Marco Dragon, Dendrite, and more) as well as free Re/Im inputs.
 
