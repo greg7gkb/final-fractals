@@ -1,9 +1,13 @@
 name: Deploy to GitHub Pages
 
+# Triggers on either branch — both branches need this same workflow so a push
+# to either one rebuilds both deployments. The deployment combines `main` at
+# the site root with `dev/f32-only` under /f32-only/ so the two versions can
+# be compared side-by-side at the same origin.
 on:
   push:
-    branches: [main]
-  workflow_dispatch:   # allow manual trigger from the Actions tab
+    branches: [main, dev/f32-only]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,23 +23,65 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+
+      - name: Check if dev/f32-only branch exists
+        id: check_dev
+        run: |
+          if git ls-remote --exit-code --heads https://github.com/${{ github.repository }}.git dev/f32-only >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout dev/f32-only
+        if: steps.check_dev.outputs.exists == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: dev/f32-only
+          path: f32-only
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: main/package-lock.json
 
-      - name: Install dependencies
+      - name: Install main dependencies
+        working-directory: main
         run: npm ci
 
-      - name: Build
+      - name: Build main
+        working-directory: main
         run: npm run build
+
+      - name: Install f32-only dependencies
+        if: steps.check_dev.outputs.exists == 'true'
+        working-directory: f32-only
+        run: npm ci
+
+      - name: Build f32-only
+        if: steps.check_dev.outputs.exists == 'true'
+        working-directory: f32-only
+        run: npm run build
+
+      - name: Combine outputs
+        run: |
+          mkdir -p combined
+          cp -r main/dist/. combined/
+          if [ -d f32-only/dist ]; then
+            mkdir -p combined/f32-only
+            cp -r f32-only/dist/. combined/f32-only/
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: combined
 
   deploy:
     needs: build
