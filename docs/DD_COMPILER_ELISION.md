@@ -37,20 +37,88 @@ e = (a - (s - v)) + (b - v)    // where s = a + b, v = s - a
 ```
 
 In exact real arithmetic this expression is `0`. Its entire value comes from `float32`
-rounding: `s - a` does **not** equal `b`, and that discrepancy *is* the error we want to
-capture. This is exactly the kind of expression a **fast-math / reassociating compiler
-destroys**, because under real-number algebra it can prove the result is zero (or that the
-split is a no-op) and simplify it away.
+rounding — and that is precisely why a fast-math compiler destroys it. The key realisation
+is that **the compiler and the hardware are using two different models of arithmetic**, and
+double-double lives entirely in the gap between them.
 
-On Apple's Metal backend (via ANGLE), the GLSL→native compiler was applying these
-real-number simplifications to the shader. Three distinct failure modes were found, and
-each had to be blocked separately:
+### 2.1 The compiler optimises with real-number algebra, not float algebra
+
+Every optimiser rewrites expressions using identities like `x - x = 0`, `(a + b) - a = b`,
+and associativity. Those identities are **true for real numbers and false for floating
+point**, because a float operation *rounds* its result before the next operation sees it.
+Double-double exists precisely to capture that rounding — so an optimiser that assumes it
+away deletes the payload.
+
+Ask the compiler to simplify `e` with real-number algebra, substituting `s = a + b`:
+
+```
+v         = s - a       = (a + b) - a = b
+s - v     = (a + b) - b = a
+a - (s-v) = a - a       = 0
+b - v     = b - b       = 0
+e         = 0 + 0       = 0
+```
+
+The proof is airtight *in real arithmetic*, so the optimiser concludes `e ≡ 0` and removes
+the whole computation. It is not being reckless — within the model it was handed, the
+operations genuinely are redundant. From its point of view they never made a difference to
+the output at all.
+
+### 2.2 Where the model diverges from the hardware
+
+Run the same code in actual `float32` with `a = 1.0`, `b = 2⁻³⁰` (≈ 9.3e-10) — far below
+`ulp(1.0) = 2⁻²³ ≈ 1.2e-7`:
+
+| step | real-number value | **actual float32 value** |
+|------|-------------------|--------------------------|
+| `s = a + b`   | 1.0000000009… | **1.0** — `b` rounds away entirely |
+| `v = s - a`   | `b` = 2⁻³⁰ | **0.0** — `1.0 − 1.0` |
+| `a - (s - v)` | 0 | 0.0 |
+| `b - v`       | 0 | **2⁻³⁰** |
+| `e`           | **0** | **2⁻³⁰** ✅ |
+
+Executed honestly, TwoSum recovers `e = 2⁻³⁰` — the exact bit of `b` that didn't fit into
+`s`. That is the whole payload. The compiler's proof hinges on one illegal step:
+
+> `v = (a + b) − a = b`
+
+True in real numbers. But in `float32`, `a + b` **already rounded to `1.0`** before the
+subtraction, so `(a+b) − a` is `0`, not `b`. The optimiser substituted the *un-rounded*
+value of `s` back in — it "forgot" that `s` had been rounded. That single substitution
+collapses `e` to `0`, and the output becomes bit-for-bit identical to plain float32.
+
+### 2.3 Why the compiler was allowed to do this
+
+Two things stacked together:
+
+1. **Fast-math is the GPU default.** GLSL's precision guarantees are weak, and ANGLE→Metal
+   (like most shader toolchains) enables aggressive float optimisation: it is explicitly
+   permitted to treat `+` and `*` as associative/distributive — i.e. to reason as if
+   rounding does not occur — in exchange for speed. The strict IEEE-754 reassociation rules
+   that would forbid this are not promised on that path. (This is exactly why WGSL/WebGPU
+   fixes it: it *mandates* strict semantics, so the rewrite becomes illegal — see §5.)
+2. **A static optimiser cannot see the runtime difference.** It does not execute the shader
+   and diff the pixels; it transforms the expression tree with rules it believes preserve
+   value. Under its assumed model they *do*. Nothing in an algebraic-simplification pass
+   models per-operation rounding, so there is no signal that this particular rewrite
+   mattered. The difference you wanted exists only at runtime — invisible to the pass that
+   deleted it.
+
+### 2.4 The three failure modes
+
+On Apple's Metal backend (via ANGLE), three distinct forms of this simplification were
+found, and each had to be blocked separately:
 
 | # | Failure mode | What the compiler did |
 |---|--------------|-----------------------|
 | 1 | **Algebraic reassociation** | Collapsed TwoSum's `(a - (s - v)) + (b - v)` to `0`, and the Veltkamp split's `t - (t - a)` to `a`. |
-| 2 | **Symbolic substitution** | Substituted `s = a + b` back in, turning `s - a` into `(a + b) - a` → folded to `b`. But in `float32`, `(a+b) - a` rounds to `0`, not `b`, when `|b| ≪ ulp(a)`. |
+| 2 | **Symbolic substitution** | Substituted `s = a + b` back in, turning `s - a` into `(a + b) - a` → folded to `b`. But in `float32`, `(a+b) - a` rounds to `0`, not `b`, when `|b| ≪ ulp(a)` (the worked example above). |
 | 3 | **No-op elision** | Recognised a pure bitcast `uintBitsToFloat(floatBitsToUint(x))` as an identity and constant-folded it away — so an un-salted `launder()` did nothing. |
+
+> **In one line:** double-double is a program whose entire purpose is to *measure*
+> floating-point rounding error; a fast-math optimiser's entire purpose is to *pretend
+> rounding error doesn't exist*. They are directly at odds — so the optimiser "helpfully"
+> deleted the only thing the code existed to compute.
 
 ## 3. The fix
 
