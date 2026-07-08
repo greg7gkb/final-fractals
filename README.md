@@ -108,6 +108,8 @@ pixel (x, y)
 
 GPU shaders use 32-bit floats (~7 significant digits). At deep zoom, adjacent pixels become indistinguishable and the image degrades into blocky rectangles. To extend the representable depth, Mandelbrot, Julia, Burning Ship, Tricorn, and Celtic use *double-double* arithmetic: every value is a pair of float32s `(hi, lo)` where `hi + lo` holds ~15 significant digits — about the same as a float64. The extra precision costs roughly 4–8× more GPU work per pixel.
 
+> **Note:** the dd primitives are wrapped in a `launder()` bitcast to stop the GPU shader compiler from optimising them away — a real bug we hit on Apple's Metal/WebGL2 path. See [docs/DD_COMPILER_ELISION.md](docs/DD_COMPILER_ELISION.md) for the full story and the runtime validator that guards against a regression.
+
 **The catch: iteration amplifies error.** The escape-time map `z ← z² + c` is dynamical, so a tiny perturbation in `c` gets multiplied by ~|2z| every step. Near the set boundary `|z|` hovers around 1–2, so error roughly doubles each iteration. After ~50 boundary-region iterations dd's 15-digit budget is exhausted, regardless of the static representation depth. The practical clean-zoom ceilings are therefore much lower than the per-number precision suggests:
 
 | Mode | Static representation | Clean zoom (near boundary) |

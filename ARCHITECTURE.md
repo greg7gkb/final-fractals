@@ -97,30 +97,35 @@ GPU shaders use 32-bit IEEE 754 floats (`float`), which have ~7 significant deci
 
 We represent each coordinate as a pair of float32 values `(hi, lo)` where the true value is `hi + lo` exactly, and `|lo| ≤ ½ · ulp(hi)`. This gives ~15 significant digits — enough to zoom to ~10⁻¹⁴.
 
-**TwoSum** (Knuth): given floats `a` and `b`, compute `(s, e)` such that `s = fl(a+b)` and `s + e = a + b` exactly (no bits lost):
+**TwoSum** (Knuth): given floats `a` and `b`, compute `(s, e)` such that `s = fl(a+b)` and `s + e = a + b` exactly (no bits lost). Mathematically the error term is `e = (a - (s - v)) + (b - v)` where `v = s - a`. The shipping GLSL wraps every intermediate in a `launder()` bitcast — this is **not cosmetic**: without it the shader compiler deletes the whole computation (see §3.3):
 
 ```glsl
 vec2 twoSum(float a, float b) {
-  float s = a + b;
-  float v = s - a;
-  float e = (a - (s - v)) + (b - v);
+  float s    = launder(a + b);
+  float v    = launder(s - a);
+  float sv   = launder(s - v);
+  float bv   = launder(b - v);
+  float a_sv = launder(a - sv);
+  float e    = a_sv + bv;
   return vec2(s, e);
 }
 ```
 
-**TwoProd** (Dekker/Veltkamp): same idea for multiplication, using a bit-split to separate the mantissa:
+**TwoProd** (Dekker/Veltkamp): same idea for multiplication, using a bit-split to separate the mantissa. The split zeroes the bottom 12 mantissa bits with a mask rather than the classical `t - (t - a)` Veltkamp identity — the mask is genuine bit-work with no float identity for the compiler to simplify away (again, see §3.3):
 
 ```glsl
-vec2 split(float a) {          // split into two non-overlapping 12-bit halves
-  float t = 4097.0 * a;        // 4097 = 2^12 + 1
-  float hi = t - (t - a);
+vec2 splitF(float a) {         // zero the bottom 12 mantissa bits
+  float hi = uintBitsToFloat(floatBitsToUint(a) & 0xFFFFF000u);
   return vec2(hi, a - hi);
 }
 
 vec2 twoProd(float a, float b) {
   float p  = a * b;
-  vec2  as = split(a);  vec2 bs = split(b);
-  float e  = ((as.x*bs.x - p) + as.x*bs.y + as.y*bs.x) + as.y*bs.y;
+  vec2  as = splitF(a);  vec2 bs = splitF(b);
+  float t1 = launder(as.x*bs.x - p);
+  float t2 = launder(t1 + as.x*bs.y);
+  float t3 = launder(t2 + as.y*bs.x);
+  float e  = t3 + as.y*bs.y;
   return vec2(p, e);
 }
 ```
@@ -132,7 +137,13 @@ const reHi = Math.fround(camera.centerRe);   // nearest float32
 const reLo = camera.centerRe - reHi;         // exact residual
 ```
 
-Both the **coordinate transform** and the **iteration loop** (for Mandelbrot, Julia, Burning Ship, Tricorn) operate entirely in double-double arithmetic, so deep zoom produces sharp, block-free images at any level the GPU can render within its iteration budget.
+Both the **coordinate transform** and the **iteration loop** (for Mandelbrot, Julia, Burning Ship, Tricorn, Celtic) operate entirely in double-double arithmetic, so deep zoom produces sharp, block-free images at any level the GPU can render within its iteration budget.
+
+### 3.3 The Catch: Compiler Elision
+
+Every error term above is an algebraic identity that evaluates to zero in *real* arithmetic — its entire value comes from `float32` rounding. That makes it exactly what a fast-math compiler simplifies away. On Apple's Metal-based WebGL2 path (via ANGLE) the driver did precisely that: the dd code compiled, linked, and ran, but produced output **bit-for-bit identical to plain float32**, with no error and no warning. The `launder()` bitcast wrapping each intermediate — and the bit-mask split above — exist solely to block this. A runtime validator (`src/dd/validate.ts`) re-checks the primitives on every app load and flips the title-bar chip from green **DD** to orange **f32** if the compiler starts eliding them again.
+
+Full write-up — the three failure modes, the fix, and the detector — is in [`docs/DD_COMPILER_ELISION.md`](docs/DD_COMPILER_ELISION.md).
 
 ---
 
